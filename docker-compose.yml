@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: claimcheck-db
+    environment:
+      POSTGRES_USER: claimcheck
+      POSTGRES_PASSWORD: claimcheck
+      POSTGRES_DB: claimcheck
+    ports:
+      - "5432:5432"
+    volumes:
+      - claimcheck_pgdata:/var/lib/postgresql/data
+
+volumes:
+  claimcheck_pgdata:
