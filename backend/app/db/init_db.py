@@ -1,4 +1,4 @@
-from app.db.models import Document, DocumentChunk, Claim, VerificationResult
+import app.db.models
 from app.db.database import engine, Base
 
 def init_db():
