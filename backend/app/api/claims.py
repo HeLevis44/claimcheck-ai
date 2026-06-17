@@ -36,13 +36,6 @@ def get_claims(db: Session = Depends(get_db)):
     claims = db.query(Claim).all()
     return claims
 
-@router.get("/{claim_id}", response_model=ClaimResponse)
-def get_claim(claim_id: int, db: Session = Depends(get_db)):
-    claim = db.query(Claim).filter(Claim.id == claim_id).first()
-    if not claim:
-        raise HTTPException(status_code=404, detail="Claim not found")
-    return claim
-
 @router.get("/{claim_id}/evidence", response_model=list[EvidenceResponse])
 def get_claim_evidence(claim_id: int, db: Session = Depends(get_db)):
     claim = db.query(Claim).filter(Claim.id == claim_id).first()
@@ -54,28 +47,41 @@ def get_claim_evidence(claim_id: int, db: Session = Depends(get_db)):
         return []
 
     evidence_list = []
-    seen_chunk_ids = set()
+    chunk_scores = {}
 
-    for key_word in key_words:
-        evidences = (
-        db.query(DocumentChunk)
-        .filter(DocumentChunk.content.ilike(f"%{key_word}%"))
-        .limit(10)
-        .all()
-        )
+    for keyword in key_words:
+        chunks = db.query(DocumentChunk).filter(DocumentChunk.content.ilike(f"%{keyword}%")).all()
+        for chunk in chunks:
+            if chunk.id not in chunk_scores:
+                chunk_scores[chunk.id] = {
+                    "chunk": chunk,
+                    "score": 0
+                }
+            chunk_scores[chunk.id]["score"] += 1
+    sorted_chunks = sorted(chunk_scores.values(), key=lambda x: x["score"], reverse=True)
+    for chunk_info in sorted_chunks[:10]:
+        chunk = chunk_info["chunk"]
+        evidence_list.append(EvidenceResponse(
+        chunk_id=chunk.id,
+        document_id=chunk.document_id,
+        page_number=chunk.page_number,
+        chunk_index=chunk.chunk_index,
+        content=chunk.content,
+        score=chunk_info["score"]
+    ))
+    return evidence_list
 
-        for evidence in evidences:
-            if evidence.id in seen_chunk_ids:
-                continue
+@router.get("/{claim_id}", response_model=ClaimResponse)
+def get_claim(claim_id: int, db: Session = Depends(get_db)):
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    return claim
 
-            seen_chunk_ids.add(evidence.id)
-            evidence_list.append(
-                EvidenceResponse(
-                    chunk_id=evidence.id,
-                    document_id=evidence.document_id,
-                    page_number=evidence.page_number,
-                    chunk_index=evidence.chunk_index,
-                    content=evidence.content,
-                )
-            )
-    return evidence_list[:10]
+
+
+
+
+
+
+    

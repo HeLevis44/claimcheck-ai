@@ -6,3 +6,4 @@ class EvidenceResponse(BaseModel):
     page_number: int
     chunk_index: int
     content: str
+    score: int
