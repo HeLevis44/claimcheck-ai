@@ -6,6 +6,7 @@ from app.schemas.claim import ClaimCreate, ClaimResponse
 from app.schemas.evidence import EvidenceResponse
 from app.schemas.verification import VerificationResultResponse
 from app.services.retrieval import retrieve_evidence_for_claim
+from app.services.verification import generate_rule_based_verification
 
 router = APIRouter(prefix="/claims", tags=["claims"])
 
@@ -23,36 +24,19 @@ def verify_claim(claim_id: int, db: Session = Depends(get_db)):
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     evidences = retrieve_evidence_for_claim(claim, db)
-    if not evidences:
-        status = "not_enough_evidence"
-        confidence = 0.2
-        reasoning = "No relevant evidence chunks were found."
-        evidence_chunk_id = None
-    else:
-        top_evidence = evidences[0]
-        evidence_chunk_id = top_evidence.chunk_id
-        if top_evidence.score >= 3:
-            status = "likely_supported"
-            confidence = 0.8
-            reasoning = "The top evidence chunk matched multiple claim keywords."
-        else:
-            status = "weak_evidence"
-            confidence = 0.5
-            reasoning = "Only limited keyword overlap was found between the claim and evidence."
+    verification_data = generate_rule_based_verification(evidences)
 
-    new_verification_Result = VerificationResult(
+    new_verification_result = VerificationResult(
         claim_id = claim.id,
-        evidence_chunk_id = evidence_chunk_id,
-        status = status,
-        confidence = confidence,
-        reasoning = reasoning
+        evidence_chunk_id = verification_data["evidence_chunk_id"],
+        status = verification_data["status"],
+        confidence = verification_data["confidence"],
+        reasoning = verification_data["reasoning"]
     )
-    db.add(new_verification_Result)
+    db.add(new_verification_result)
     db.commit()
-    db.refresh(new_verification_Result)
-    return new_verification_Result
-        
-
+    db.refresh(new_verification_result)
+    return new_verification_result
 
 @router.get("/", response_model=list[ClaimResponse])
 def get_claims(db: Session = Depends(get_db)):
