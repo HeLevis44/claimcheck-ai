@@ -99,3 +99,50 @@ def sample_claim_without_evidence(db_session):
     db.commit()
     db.refresh(claim)
     yield claim
+
+@pytest.fixture
+def sample_claim_with_ranked_chunks(db_session):
+    db = db_session
+
+    document = Document(
+        filename="ranked_chunks_test.pdf",
+        file_type="pdf"
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+
+    high_score_chunk = DocumentChunk(
+    document_id=document.id,
+    page_number=1,
+    chunk_index=0,
+    content="nebula orbit quantum signal archive"
+    )
+
+    low_score_chunk = DocumentChunk(
+    document_id=document.id,
+    page_number=1,
+    chunk_index=1,
+    content="nebula orbit archive"
+    )
+    db.add(high_score_chunk)
+    db.add(low_score_chunk)
+
+    claim = Claim(
+    claim_text="nebula orbit quantum signal",
+    source_text="Ranked retrieval test source text."
+    )
+    db.add(claim)
+
+    db.commit()
+    db.refresh(high_score_chunk)
+    db.refresh(low_score_chunk)
+    db.refresh(claim)
+
+    yield {
+        "claim": claim,
+        "high_score_chunk": high_score_chunk,
+        "low_score_chunk": low_score_chunk
+    }
+
+    
