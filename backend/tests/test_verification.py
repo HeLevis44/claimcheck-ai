@@ -227,3 +227,60 @@ def test_get_all_verification_results_when_empty():
 
     assert response.status_code == 200
     assert response.json() == []
+
+def test_get_verification_result_detail_with_evidence(sample_claim_with_chunk):
+    claim = sample_claim_with_chunk["claim"]
+    chunk = sample_claim_with_chunk["chunk"]
+    create_response = client.post(f"/claims/{claim.id}/verify")
+
+    assert create_response.status_code == 200
+    create_result = create_response.json()
+
+    response = client.get(f"/verification-results/{create_result['id']}/detail")
+    assert response.status_code == 200
+
+    detail = response.json()
+
+    assert detail["verification"]["id"] == create_result["id"]
+    assert detail["verification"]["status"] == create_result["status"]
+    assert detail["verification"]["confidence"] == create_result["confidence"]
+
+    assert detail["claim"]["id"] == claim.id
+    assert detail["claim"]["claim_text"] == claim.claim_text
+    assert detail["claim"]["source_text"] == claim.source_text
+
+    assert detail["evidence"] is not None
+    assert detail["evidence"]["id"] == chunk.id
+    assert detail["evidence"]["document_id"] == chunk.document_id
+    assert detail["evidence"]["page_number"] == chunk.page_number
+    assert detail["evidence"]["chunk_index"] == chunk.chunk_index
+    assert detail["evidence"]["content"] == chunk.content
+
+    assert detail["evidence"]["filename"] == chunk.document.filename
+
+def test_get_verification_result_detail_without_evidence(sample_claim_without_evidence):
+    claim = sample_claim_without_evidence
+
+    create_response = client.post(f"/claims/{claim.id}/verify")
+    assert create_response.status_code == 200
+
+    create_result = create_response.json()
+    
+    response = client.get(f"/verification-results/{create_result['id']}/detail")
+    assert response.status_code == 200
+
+    detail = response.json()
+    assert detail["verification"]["id"] == create_result["id"]
+    assert detail["claim"]["id"] == claim.id
+    assert detail["claim"]["claim_text"] == claim.claim_text
+    
+    assert detail['evidence'] is None
+
+def test_get_missing_verification_result_detail():
+    response = client.get("/verification-results/999999/detail")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Verification result not found"
+
+
+

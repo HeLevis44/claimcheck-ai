@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import VerificationResult, Claim, DocumentChunk
-from app.schemas.verification import VerificationResultCreate, VerificationResultResponse
+from app.schemas.verification import VerificationResultCreate, VerificationResultResponse, VerificationDetailResponse
+from app.services.verification_detail import build_verification_detail_response
 
 router = APIRouter(prefix="/verification-results", tags=["verification-results"])
 
@@ -41,6 +42,13 @@ def get_verification_claim(claim_id: int, db: Session = Depends(get_db)):
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     return db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).all()
+
+@router.get("/{verification_id}/detail",response_model=VerificationDetailResponse)
+def get_verification_result_detail(verification_id: int, db: Session = Depends(get_db)):
+    verification = db.query(VerificationResult).filter(VerificationResult.id == verification_id).first()
+    if not verification:
+        raise HTTPException(status_code=404, detail="Verification result not found")
+    return build_verification_detail_response(verification)
 
 @router.get("/{verification_id}", response_model=VerificationResultResponse)
 def get_verification_result(verification_id: int, db: Session = Depends(get_db)):
