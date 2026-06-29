@@ -40,10 +40,17 @@ def test_get_claims_list():
     response = client.get("/claims/")
 
     assert response.status_code == 200
-    claims = response.json()
-    assert isinstance(claims, list)
 
-    claim_ids = [claim["id"] for claim in claims]
+
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "items" in result
+    assert "total" in result
+    assert "limit" in result
+    assert "offset" in result
+    assert "has_more" in result
+
+    claim_ids = [claim["id"] for claim in result["items"]]
     assert created_claim["id"] in claim_ids
 
 def test_create_claim_missing_required_field():
@@ -67,9 +74,13 @@ def test_get_claims_respects_limit():
 
     assert response.status_code == 200
 
-    claims = response.json()
-    assert isinstance(claims, list)
-    assert len(claims) == 2
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 0
+    assert len(result["items"]) == 2
+    assert result["has_more"] is True
 
 def test_get_claims_respects_offset():
     created_claim_ids = []
@@ -89,11 +100,15 @@ def test_get_claims_respects_offset():
 
     assert response.status_code == 200
 
-    claims = response.json()
-    assert isinstance(claims, list)
-    assert len(claims) == 2
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 1
+    assert len(result["items"]) == 2
+    assert result["has_more"] is False
 
-    returned_claim_ids = [claim["id"] for claim in claims]
+    returned_claim_ids = [claim["id"] for claim in result["items"]]
 
     assert created_claim_ids[-1] not in returned_claim_ids
 

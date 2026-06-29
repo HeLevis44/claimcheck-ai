@@ -5,8 +5,10 @@ from app.db.models import Claim, VerificationResult
 from app.schemas.claim import ClaimCreate, ClaimResponse
 from app.schemas.evidence import EvidenceResponse
 from app.schemas.verification import VerificationResultResponse
+from app.schemas.pagination import PaginatedResponse
 from app.services.retrieval import retrieve_evidence_for_claim
 from app.services.verification import generate_rule_based_verification
+
 
 router = APIRouter(prefix="/claims", tags=["claims"])
 
@@ -38,22 +40,26 @@ def verify_claim(claim_id: int, db: Session = Depends(get_db)):
     db.refresh(new_verification_result)
     return new_verification_result
 
-@router.get("/", response_model=list[ClaimResponse])
+@router.get("/", response_model=PaginatedResponse[ClaimResponse])
 def get_claims(
     offset: int = Query(0, ge = 0),
     limit: int = Query(20, ge = 1, le = 100),
     db: Session = Depends(get_db)
     ):
-    return (
-        db.query(Claim)
-        .order_by(
-            Claim.created_at.desc(),
-            Claim.id.desc(),
-        )
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    total = db.query(Claim).count()
+
+    items = db.query(Claim).order_by(
+        Claim.created_at.desc(),
+        Claim.id.desc()
+        ).offset(offset).limit(limit).all()
+
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset+len(items)<total
+    }
 
 @router.get("/{claim_id}/evidence", response_model=list[EvidenceResponse])
 def get_claim_evidence(claim_id: int, db: Session = Depends(get_db)):

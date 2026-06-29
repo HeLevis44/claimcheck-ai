@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import VerificationResult, Claim, DocumentChunk
 from app.schemas.verification import VerificationResultCreate, VerificationResultResponse, VerificationDetailResponse
+from app.schemas.pagination import PaginatedResponse
 from app.services.verification_detail import build_verification_detail_response
 
 router = APIRouter(prefix="/verification-results", tags=["verification-results"])
@@ -32,22 +33,25 @@ def create_verification_result(verification: VerificationResultCreate, db: Sessi
     db.refresh(db_verification_result)
     return db_verification_result
 
-@router.get("/", response_model=list[VerificationResultResponse])
+@router.get("/", response_model=PaginatedResponse[VerificationResultResponse])
 def get_verification_results(
         limit: int = Query(20, ge=1, le=100),
         offset: int = Query(0, ge=0),
         db: Session = Depends(get_db),
     ):
-    return (
-        db.query(VerificationResult)
-        .order_by(
+    total = db.query(VerificationResult).count()
+    items = db.query(VerificationResult).order_by(
         VerificationResult.created_at.desc(),
         VerificationResult.id.desc(),
-        )
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+        ).offset(offset).limit(limit).all()
+    
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset+len(items)<total
+    }
 
 @router.get("/claim/{claim_id}", response_model=list[VerificationResultResponse])
 def get_verification_claim(claim_id: int, db: Session = Depends(get_db)):

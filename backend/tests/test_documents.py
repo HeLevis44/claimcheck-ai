@@ -54,10 +54,15 @@ def test_get_documents_list():
 
     assert response.status_code == 200
 
-    documents = response.json()
-    assert isinstance(documents, list)
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "items" in result
+    assert "total" in result
+    assert "limit" in result
+    assert "offset" in result
+    assert "has_more" in result
 
-    document_ids = [document["id"] for document in documents]
+    document_ids = [document["id"] for document in result["items"]]
 
     assert created_document["id"] in document_ids
 
@@ -192,9 +197,13 @@ def test_get_documents_respects_limit():
 
     assert response.status_code == 200
 
-    documents = response.json()
-    assert isinstance(documents, list)
-    assert len(documents) == 2
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 0
+    assert len(result["items"]) == 2
+    assert result["has_more"] is True
 
 def test_get_documents_respects_offset():
     created_document_ids = []
@@ -214,11 +223,15 @@ def test_get_documents_respects_offset():
 
     assert response.status_code == 200
 
-    documents = response.json()
-    assert isinstance(documents, list)
-    assert len(documents) == 2
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 1
+    assert len(result["items"]) == 2
+    assert result["has_more"] is False
 
-    returned_document_ids = [document["id"] for document in documents]
+    returned_document_ids = [document["id"] for document in result["items"]]
 
     assert created_document_ids[-1] not in returned_document_ids
 

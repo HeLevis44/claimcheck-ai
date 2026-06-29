@@ -190,12 +190,17 @@ def test_get_all_verification_results(sample_claim_with_chunk):
 
     assert response.status_code == 200
 
-    verification_results = response.json()
-    assert isinstance(verification_results, list)
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "items" in result
+    assert "total" in result
+    assert "limit" in result
+    assert "offset" in result
+    assert "has_more" in result
 
     result_ids = [
         verification_result["id"]
-        for verification_result in verification_results
+        for verification_result in result["items"]
     ]
 
     assert created_result["id"] in result_ids
@@ -226,7 +231,14 @@ def test_get_all_verification_results_when_empty():
     response = client.get("/verification-results/")
 
     assert response.status_code == 200
-    assert response.json() == []
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["items"] == []
+    assert result["total"] == 0
+    assert result["limit"] == 20
+    assert result["offset"] == 0
+    assert result["has_more"] is False
+
 
 def test_get_verification_result_detail_with_evidence(sample_claim_with_chunk):
     claim = sample_claim_with_chunk["claim"]
@@ -292,9 +304,13 @@ def test_get_verification_results_respects_limit(sample_claim_with_chunk):
     response = client.get("/verification-results/?limit=2")
     assert response.status_code == 200
 
-    verification_results = response.json()
-    assert isinstance(verification_results, list)
-    assert len(verification_results) == 2
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 0
+    assert len(result["items"]) == 2
+    assert result["has_more"] is True
 
 def test_get_verification_results_respects_offset(sample_claim_with_chunk):
     claim = sample_claim_with_chunk["claim"]
@@ -311,14 +327,18 @@ def test_get_verification_results_respects_offset(sample_claim_with_chunk):
 
     assert response.status_code == 200
 
-    verification_results = response.json()
+    result = response.json()
 
-    assert isinstance(verification_results, list)
-    assert len(verification_results) == 2
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 1
+    assert len(result["items"]) == 2
+    assert result["has_more"] is False
 
     returned_result_ids = [
         verification_result["id"]
-        for verification_result in verification_results
+        for verification_result in result["items"]
     ]
 
     assert created_result_ids[-1] not in returned_result_ids
