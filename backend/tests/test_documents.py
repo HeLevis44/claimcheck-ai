@@ -177,3 +177,59 @@ def test_create_chunk_missing_required_field():
     )
 
     assert response.status_code == 422
+
+def test_get_documents_respects_limit():
+    for index in range(3):
+        payload = {
+            "filename": f"limit_document_{index}.pdf",
+            "file_type": "pdf",
+        }
+
+        create_response = client.post("/documents/", json=payload)
+        assert create_response.status_code == 200
+
+    response = client.get("/documents/?limit=2")
+
+    assert response.status_code == 200
+
+    documents = response.json()
+    assert isinstance(documents, list)
+    assert len(documents) == 2
+
+def test_get_documents_respects_offset():
+    created_document_ids = []
+
+    for index in range(3):
+        payload = {
+            "filename": f"offset_document_{index}.pdf",
+            "file_type": "pdf",
+        }
+
+        create_response = client.post("/documents/", json=payload)
+        assert create_response.status_code == 200
+
+        created_document_ids.append(create_response.json()["id"])
+
+    response = client.get("/documents/?limit=2&offset=1")
+
+    assert response.status_code == 200
+
+    documents = response.json()
+    assert isinstance(documents, list)
+    assert len(documents) == 2
+
+    returned_document_ids = [document["id"] for document in documents]
+
+    assert created_document_ids[-1] not in returned_document_ids
+
+def test_get_documents_rejects_zero_limit():
+    response = client.get("/documents/?limit=0")
+
+    assert response.status_code == 422
+
+def test_get_documents_rejects_negative_offset():
+    response = client.get("/documents/?offset=-1")
+
+    assert response.status_code == 422
+
+

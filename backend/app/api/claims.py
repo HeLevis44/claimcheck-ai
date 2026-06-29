@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import Claim, VerificationResult
@@ -39,9 +39,21 @@ def verify_claim(claim_id: int, db: Session = Depends(get_db)):
     return new_verification_result
 
 @router.get("/", response_model=list[ClaimResponse])
-def get_claims(db: Session = Depends(get_db)):
-    claims = db.query(Claim).all()
-    return claims
+def get_claims(
+    offset: int = Query(0, ge = 0),
+    limit: int = Query(20, ge = 1, le = 100),
+    db: Session = Depends(get_db)
+    ):
+    return (
+        db.query(Claim)
+        .order_by(
+            Claim.created_at.desc(),
+            Claim.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 @router.get("/{claim_id}/evidence", response_model=list[EvidenceResponse])
 def get_claim_evidence(claim_id: int, db: Session = Depends(get_db)):

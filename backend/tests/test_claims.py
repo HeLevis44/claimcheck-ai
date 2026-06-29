@@ -52,3 +52,57 @@ def test_create_claim_missing_required_field():
     }
     response = client.post("/claims/", json=payload)
     assert response.status_code == 422
+
+def test_get_claims_respects_limit():
+    for index in range(3):
+        payload = {
+            "claim_text": f"Limit pagination claim {index}",
+            "source_text": "Pagination test source.",
+        }
+
+        create_response = client.post("/claims/", json=payload)
+        assert create_response.status_code == 200
+
+    response = client.get("/claims/?limit=2")
+
+    assert response.status_code == 200
+
+    claims = response.json()
+    assert isinstance(claims, list)
+    assert len(claims) == 2
+
+def test_get_claims_respects_offset():
+    created_claim_ids = []
+
+    for index in range(3):
+        payload = {
+            "claim_text": f"Offset pagination claim {index}",
+            "source_text": "Pagination test source.",
+        }
+
+        create_response = client.post("/claims/", json=payload)
+        assert create_response.status_code == 200
+
+        created_claim_ids.append(create_response.json()["id"])
+
+    response = client.get("/claims/?limit=2&offset=1")
+
+    assert response.status_code == 200
+
+    claims = response.json()
+    assert isinstance(claims, list)
+    assert len(claims) == 2
+
+    returned_claim_ids = [claim["id"] for claim in claims]
+
+    assert created_claim_ids[-1] not in returned_claim_ids
+
+def test_get_claims_rejects_zero_limit():
+    response = client.get("/claims/?limit=0")
+
+    assert response.status_code == 422
+
+def test_get_claims_rejects_negative_offset():
+    response = client.get("/claims/?offset=-1")
+
+    assert response.status_code == 422

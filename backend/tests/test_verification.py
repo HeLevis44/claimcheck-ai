@@ -328,7 +328,6 @@ def test_get_verification_results_rejects_zero_limit():
 
     assert response.status_code == 422
 
-
 def test_get_verification_results_rejects_negative_offset():
     response = client.get("/verification-results/?offset=-1")
 

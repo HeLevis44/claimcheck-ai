@@ -35,9 +35,9 @@ def create_verification_result(verification: VerificationResultCreate, db: Sessi
 @router.get("/", response_model=list[VerificationResultResponse])
 def get_verification_results(
         limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
-):
+        offset: int = Query(0, ge=0),
+        db: Session = Depends(get_db),
+    ):
     return (
         db.query(VerificationResult)
         .order_by(
