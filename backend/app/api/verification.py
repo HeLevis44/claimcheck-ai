@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import VerificationResult, Claim, DocumentChunk
@@ -33,8 +33,21 @@ def create_verification_result(verification: VerificationResultCreate, db: Sessi
     return db_verification_result
 
 @router.get("/", response_model=list[VerificationResultResponse])
-def get_verification_results(db: Session = Depends(get_db)):
-    return db.query(VerificationResult).all()
+def get_verification_results(
+        limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(VerificationResult)
+        .order_by(
+        VerificationResult.created_at.desc(),
+        VerificationResult.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 @router.get("/claim/{claim_id}", response_model=list[VerificationResultResponse])
 def get_verification_claim(claim_id: int, db: Session = Depends(get_db)):

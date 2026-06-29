@@ -282,5 +282,55 @@ def test_get_missing_verification_result_detail():
     assert response.status_code == 404
     assert response.json()["detail"] == "Verification result not found"
 
+def test_get_verification_results_respects_limit(sample_claim_with_chunk):
+    claim = sample_claim_with_chunk["claim"]
 
+    for _ in range(3):
+        create_response = client.post(f"/claims/{claim.id}/verify")
+        assert create_response.status_code == 200
+
+    response = client.get("/verification-results/?limit=2")
+    assert response.status_code == 200
+
+    verification_results = response.json()
+    assert isinstance(verification_results, list)
+    assert len(verification_results) == 2
+
+def test_get_verification_results_respects_offset(sample_claim_with_chunk):
+    claim = sample_claim_with_chunk["claim"]
+
+    created_result_ids = []
+
+    for _ in range(3):
+        create_response = client.post(f"/claims/{claim.id}/verify")
+        assert create_response.status_code == 200
+
+        created_result_ids.append(create_response.json()["id"])
+
+    response = client.get("/verification-results/?limit=2&offset=1")
+
+    assert response.status_code == 200
+
+    verification_results = response.json()
+
+    assert isinstance(verification_results, list)
+    assert len(verification_results) == 2
+
+    returned_result_ids = [
+        verification_result["id"]
+        for verification_result in verification_results
+    ]
+
+    assert created_result_ids[-1] not in returned_result_ids
+
+def test_get_verification_results_rejects_zero_limit():
+    response = client.get("/verification-results/?limit=0")
+
+    assert response.status_code == 422
+
+
+def test_get_verification_results_rejects_negative_offset():
+    response = client.get("/verification-results/?offset=-1")
+
+    assert response.status_code == 422
 
