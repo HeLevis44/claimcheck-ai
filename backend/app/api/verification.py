@@ -5,6 +5,7 @@ from app.db.models import VerificationResult, Claim, DocumentChunk
 from app.schemas.verification import VerificationResultCreate, VerificationResultResponse, VerificationDetailResponse
 from app.schemas.pagination import PaginatedResponse
 from app.services.verification_detail import build_verification_detail_response
+from app.services.pagination import build_paginated_response
 
 router = APIRouter(prefix="/verification-results", tags=["verification-results"])
 
@@ -39,19 +40,11 @@ def get_verification_results(
         offset: int = Query(0, ge=0),
         db: Session = Depends(get_db),
     ):
-    total = db.query(VerificationResult).count()
-    items = db.query(VerificationResult).order_by(
-        VerificationResult.created_at.desc(),
-        VerificationResult.id.desc(),
-        ).offset(offset).limit(limit).all()
-    
-    return {
-        "items": items,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": offset+len(items)<total
-    }
+    query = db.query(VerificationResult).order_by(
+            VerificationResult.created_at.desc(),
+            VerificationResult.id.desc(),
+        )
+    return build_paginated_response(query, limit, offset)
 
 @router.get("/claim/{claim_id}", response_model=PaginatedResponse[VerificationResultResponse])
 def get_verification_claim(
@@ -63,19 +56,11 @@ def get_verification_claim(
     claim = db.query(Claim).filter(Claim.id == claim_id).first()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    total = db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).count()
-    items = db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).order_by(
+    query = db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).order_by(
         VerificationResult.created_at.desc(),
         VerificationResult.id.desc()
-    ).offset(offset).limit(limit).all()
-
-    return {
-        "items": items,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": offset+len(items)<total
-    }
+    )
+    return build_paginated_response(query,limit,offset)
 
 @router.get("/{verification_id}/detail",response_model=VerificationDetailResponse)
 def get_verification_result_detail(verification_id: int, db: Session = Depends(get_db)):

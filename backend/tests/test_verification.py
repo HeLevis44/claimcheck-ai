@@ -85,7 +85,7 @@ def test_get_verification_result_by_id(sample_claim_with_chunk):
 def test_get_verification_results_for_missing_claim():
     response = client.get("/verification-results/claim/999999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Claim not found"
+    assert response.json()["error"]["message"] == "Claim not found"
 
 def test_verification_uses_highest_scoring_evidence(sample_claim_with_ranked_chunks):
     claim = sample_claim_with_ranked_chunks["claim"]
@@ -105,7 +105,7 @@ def test_get_missing_verification_result():
     response = client.get("/verification-results/999999")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Verification result not found"
+    assert response.json()["error"]["message"] == "Verification result not found"
 
 def test_create_verification_result_manually(sample_claim_with_chunk):
     claim = sample_claim_with_chunk["claim"]
@@ -115,7 +115,7 @@ def test_create_verification_result_manually(sample_claim_with_chunk):
     payload = {
         "claim_id": claim.id,
         "evidence_chunk_id": chunk.id,
-        "status": "supported",
+        "status": "likely_supported",
         "confidence": 0.9,
         "reasoning": "The evidence chunk supports the claim."
     }
@@ -136,7 +136,7 @@ def test_create_verification_result_with_missing_claim():
     payload = {
         "claim_id": 999999,
         "evidence_chunk_id": None,
-        "status": "unsupported",
+        "status": "weak_evidence",
         "confidence": 0.1,
         "reasoning": "The referenced claim does not exist."
     }
@@ -144,7 +144,7 @@ def test_create_verification_result_with_missing_claim():
     response = client.post("/verification-results/", json=payload)
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Claim not found"
+    assert response.json()["error"]["message"] == "Claim not found"
 
 def test_create_verification_result_with_missing_chunk(sample_claim_with_chunk):
     claim = sample_claim_with_chunk["claim"]
@@ -152,14 +152,14 @@ def test_create_verification_result_with_missing_chunk(sample_claim_with_chunk):
     payload = {
         "claim_id": claim.id,
         "evidence_chunk_id": 999999,
-        "status": "unsupported",
+        "status": "weak_evidence",
         "confidence": 0.1,
         "reasoning": "The referenced evidence chunk does not exist."
     }
 
     response = client.post("/verification-results/", json=payload)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Evidence chunk not found"
+    assert response.json()["error"]["message"] == "Evidence chunk not found"
 
 def test_create_verification_result_without_evidence(sample_claim_without_evidence):
     claim = sample_claim_without_evidence
@@ -215,7 +215,7 @@ def test_verify_missing_claim():
     response = client.post("/claims/999999/verify")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Claim not found"
+    assert response.json()["error"]["message"] == "Claim not found"
 
 def test_create_verification_result_missing_required_field(
     sample_claim_without_evidence
@@ -298,7 +298,7 @@ def test_get_missing_verification_result_detail():
     response = client.get("/verification-results/999999/detail")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Verification result not found"
+    assert response.json()["error"]["message"] == "Verification result not found"
 
 def test_get_verification_results_respects_limit(sample_claim_with_chunk):
     claim = sample_claim_with_chunk["claim"]
@@ -447,3 +447,23 @@ def test_get_verification_results_for_claim_rejects_negative_offset(
 
     assert response.status_code == 422
 
+def test_create_verification_result_rejects_invalid_status(
+    sample_claim_without_evidence,
+):
+    claim = sample_claim_without_evidence
+
+    payload = {
+        "claim_id": claim.id,
+        "evidence_chunk_id": None,
+        "status": "invalid_status",
+        "confidence": 0.5,
+        "reasoning": "This status should be rejected.",
+    }
+
+    response = client.post("/verification-results/", json=payload)
+
+    assert response.status_code == 422
+
+    result = response.json()
+    assert result["error"]["code"] == "validation_error"
+    assert result["error"]["message"] == "Request validation failed"

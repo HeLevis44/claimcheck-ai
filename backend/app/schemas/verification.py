@@ -1,10 +1,16 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from enum import Enum
+
+class VerificationStatus(str, Enum):
+    LIKELY_SUPPORTED = "likely_supported"
+    WEAK_EVIDENCE = "weak_evidence"
+    NOT_ENOUGH_EVIDENCE = "not_enough_evidence"
 
 class VerificationResultCreate(BaseModel):
     claim_id: int
     evidence_chunk_id: int | None
-    status: str
+    status: VerificationStatus
     confidence: float
     reasoning: str | None
 
@@ -12,7 +18,7 @@ class VerificationResultResponse(BaseModel):
     id: int
     claim_id: int
     evidence_chunk_id: int | None
-    status: str
+    status: VerificationStatus
     confidence: float
     reasoning: str | None
     created_at: datetime
@@ -35,7 +41,7 @@ class EvidenceDetailResponse(BaseModel):
 
 class VerificationSummaryResponse(BaseModel):
     id: int
-    status: str
+    status: VerificationStatus
     confidence: float
     reasoning: str | None
     created_at: datetime
@@ -45,3 +51,4 @@ class VerificationDetailResponse(BaseModel):
     verification: VerificationSummaryResponse
     claim: ClaimSummaryResponse
     evidence: EvidenceDetailResponse | None
+

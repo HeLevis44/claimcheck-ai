@@ -16,7 +16,7 @@ def test_upload_non_pdf_file_rejected():
     response = client.post("/upload/pdf", files=files)
 
     assert response.status_code == 400
-    assert response.json()["detail"] == ("Invalid file type. Only PDF files are allowed.")
+    assert response.json()["error"]["message"] == ("Invalid file type. Only PDF files are allowed.")
 
 def test_upload_pdf_success():
     pdf_document = fitz.open()
@@ -92,3 +92,8 @@ def test_upload_missing_file():
     response = client.post("/upload/pdf")
 
     assert response.status_code == 422
+    result = response.json()
+    assert result["error"]["code"] == "validation_error"
+    assert result["error"]["message"] == "Request validation failed"
+    assert isinstance(result["error"]["fields"], list)
+    assert len(result["error"]["fields"]) >= 1

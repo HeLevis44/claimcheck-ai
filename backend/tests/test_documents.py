@@ -70,7 +70,7 @@ def test_get_missing_document():
     response = client.get("/documents/999999")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Document not found"
+    assert response.json()["error"]["message"] == "Document not found"
 
 def test_create_document_chunk():
     document_payload = {
@@ -144,13 +144,13 @@ def test_create_chunk_for_missing_document():
     response = client.post("/documents/999999/chunks/",json = chunk_payload)
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Document not found"
+    assert response.json()["error"]["message"] == "Document not found"
 
 def test_get_chunks_for_missing_document():
     response = client.get("/documents/999999/chunks/")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Document not found"
+    assert response.json()["error"]["message"] == "Document not found"
 
 def test_create_document_missing_required_field():
     payload = {
@@ -246,3 +246,72 @@ def test_get_documents_rejects_negative_offset():
     assert response.status_code == 422
 
 
+def test_get_documents_searches_filename():
+    matching_payload = {
+        "filename": "orion_project_report.pdf",
+        "file_type": "pdf",
+    }
+    non_matching_payload = {
+        "filename": "general_notes.pdf",
+        "file_type": "pdf",
+    }
+
+    matching_response = client.post("/documents/", json=matching_payload)
+    assert matching_response.status_code == 200
+
+    non_matching_response = client.post("/documents/", json=non_matching_payload)
+    assert non_matching_response.status_code == 200
+
+    response = client.get("/documents/?q=orion")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["id"] == matching_response.json()["id"]
+
+
+def test_get_documents_search_is_case_insensitive():
+    matching_payload = {
+        "filename": "ZEPHYR_summary.pdf",
+        "file_type": "pdf",
+    }
+    non_matching_payload = {
+        "filename": "archive_file.pdf",
+        "file_type": "pdf",
+    }
+
+    matching_response = client.post("/documents/", json=matching_payload)
+    assert matching_response.status_code == 200
+
+    non_matching_response = client.post("/documents/", json=non_matching_payload)
+    assert non_matching_response.status_code == 200
+
+    response = client.get("/documents/?q=zephyr")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["id"] == matching_response.json()["id"]
+
+
+def test_get_documents_search_returns_empty_result_when_no_match():
+    payload = {
+        "filename": "ordinary_document.pdf",
+        "file_type": "pdf",
+    }
+
+    create_response = client.post("/documents/", json=payload)
+    assert create_response.status_code == 200
+
+    response = client.get("/documents/?q=nonexistentkeyword")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["items"] == []
+    assert result["total"] == 0
+    assert result["has_more"] is False

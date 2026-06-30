@@ -45,4 +45,4 @@ def test_evidence_is_ranked_by_score(sample_claim_with_ranked_chunks):
 def test_evidence_for_missing_claim():
     response = client.get("/claims/999999/evidence")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Claim not found"
+    assert response.json()["error"]["message"] == "Claim not found"

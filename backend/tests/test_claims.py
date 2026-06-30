@@ -33,7 +33,7 @@ def test_claims_id_check():
 def test_404_check():
     response = client.get("/claims/999999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Claim not found"
+    assert response.json()["error"]["message"] == "Claim not found"
 
 def test_get_claims_list():
     created_claim = create_test_claim()
@@ -121,3 +121,71 @@ def test_get_claims_rejects_negative_offset():
     response = client.get("/claims/?offset=-1")
 
     assert response.status_code == 422
+
+def test_get_claims_searches_claim_text():
+    matching_payload = {
+        "claim_text": "Orion protocol is active",
+        "source_text": "General source text.",
+    }
+    non_matching_payload = {
+        "claim_text": "Unrelated statement",
+        "source_text": "Another source text.",
+    }
+
+    matching_response = client.post("/claims/", json=matching_payload)
+    assert matching_response.status_code == 200
+
+    non_matching_response = client.post("/claims/", json=non_matching_payload)
+    assert non_matching_response.status_code == 200
+
+    response = client.get("/claims/?q=orion")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["id"] == matching_response.json()["id"]
+
+def test_get_claims_searches_source_text_case_insensitively():
+    matching_payload = {
+        "claim_text": "A neutral claim",
+        "source_text": "Contains ZEPHYR reference.",
+    }
+    non_matching_payload = {
+        "claim_text": "Another neutral claim",
+        "source_text": "Different source.",
+    }
+
+    matching_response = client.post("/claims/", json=matching_payload)
+    assert matching_response.status_code == 200
+
+    non_matching_response = client.post("/claims/", json=non_matching_payload)
+    assert non_matching_response.status_code == 200
+
+    response = client.get("/claims/?q=zephyr")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["id"] == matching_response.json()["id"]
+
+def test_get_claims_search_returns_empty_result_when_no_match():
+    payload = {
+        "claim_text": "A neutral claim",
+        "source_text": "A neutral source.",
+    }
+
+    create_response = client.post("/claims/", json=payload)
+    assert create_response.status_code == 200
+
+    response = client.get("/claims/?q=nonexistentkeyword")
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["items"] == []
+    assert result["total"] == 0
+    assert result["has_more"] is False

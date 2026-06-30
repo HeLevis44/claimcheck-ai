@@ -8,6 +8,8 @@ from app.schemas.verification import VerificationResultResponse
 from app.schemas.pagination import PaginatedResponse
 from app.services.retrieval import retrieve_evidence_for_claim
 from app.services.verification import generate_rule_based_verification
+from app.services.pagination import build_paginated_response
+from sqlalchemy import or_
 
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -44,22 +46,25 @@ def verify_claim(claim_id: int, db: Session = Depends(get_db)):
 def get_claims(
     offset: int = Query(0, ge = 0),
     limit: int = Query(20, ge = 1, le = 100),
-    db: Session = Depends(get_db)
-    ):
-    total = db.query(Claim).count()
+    db: Session = Depends(get_db),
+    q: str | None = Query(None, min_length=1),
+):
+    query = db.query(Claim)
 
-    items = db.query(Claim).order_by(
+    if q is not None:
+        search_pattern = f"%{q}%"
+        query = query.filter(
+            or_(
+                Claim.claim_text.ilike(search_pattern),
+                Claim.source_text.ilike(search_pattern),
+            )
+        )
+
+    query = query.order_by(
         Claim.created_at.desc(),
-        Claim.id.desc()
-        ).offset(offset).limit(limit).all()
-
-    return {
-        "items": items,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": offset+len(items)<total
-    }
+        Claim.id.desc(),
+    )
+    return build_paginated_response(query, limit, offset)
 
 @router.get("/{claim_id}/evidence", response_model=list[EvidenceResponse])
 def get_claim_evidence(claim_id: int, db: Session = Depends(get_db)):
