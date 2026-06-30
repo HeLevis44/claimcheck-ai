@@ -53,12 +53,29 @@ def get_verification_results(
         "has_more": offset+len(items)<total
     }
 
-@router.get("/claim/{claim_id}", response_model=list[VerificationResultResponse])
-def get_verification_claim(claim_id: int, db: Session = Depends(get_db)):
+@router.get("/claim/{claim_id}", response_model=PaginatedResponse[VerificationResultResponse])
+def get_verification_claim(
+    claim_id: int,
+    offset: int = Query(0, ge = 0),
+    limit: int = Query(20, ge = 1, le = 100) ,
+    db: Session = Depends(get_db)
+    ):
     claim = db.query(Claim).filter(Claim.id == claim_id).first()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    return db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).all()
+    total = db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).count()
+    items = db.query(VerificationResult).filter(VerificationResult.claim_id == claim_id).order_by(
+        VerificationResult.created_at.desc(),
+        VerificationResult.id.desc()
+    ).offset(offset).limit(limit).all()
+
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset+len(items)<total
+    }
 
 @router.get("/{verification_id}/detail",response_model=VerificationDetailResponse)
 def get_verification_result_detail(verification_id: int, db: Session = Depends(get_db)):

@@ -44,17 +44,23 @@ def test_get_verification_results_by_claim(sample_claim_with_chunk):
 
     assert response.status_code == 200
 
-    verification_results = response.json()
-    assert isinstance(verification_results, list)
+    result = response.json()
+
+    assert isinstance(result, dict)
+    assert "items" in result
+    assert "total" in result
+    assert "limit" in result
+    assert "offset" in result
+    assert "has_more" in result
 
     matching_result = next(
-        (
-            result
-            for result in verification_results
-            if result["id"] == created_result["id"]
-        ),
-        None
-    )
+    (
+        verification_result
+        for verification_result in result["items"]
+        if verification_result["id"] == created_result["id"]
+    ),
+    None
+)
 
     assert matching_result is not None
     assert matching_result["claim_id"] == claim.id
@@ -350,6 +356,94 @@ def test_get_verification_results_rejects_zero_limit():
 
 def test_get_verification_results_rejects_negative_offset():
     response = client.get("/verification-results/?offset=-1")
+
+    assert response.status_code == 422
+
+def test_get_verification_results_for_claim_respects_limit(
+    sample_claim_with_chunk,
+):
+    claim = sample_claim_with_chunk["claim"]
+
+    for _ in range(3):
+        create_response = client.post(f"/claims/{claim.id}/verify")
+        assert create_response.status_code == 200
+
+    response = client.get(
+        f"/verification-results/claim/{claim.id}?limit=2"
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 0
+    assert len(result["items"]) == 2
+    assert result["has_more"] is True
+
+    assert all(
+        verification_result["claim_id"] == claim.id
+        for verification_result in result["items"]
+    )
+
+def test_get_verification_results_for_claim_respects_offset(
+    sample_claim_with_chunk,
+):
+    claim = sample_claim_with_chunk["claim"]
+    created_result_ids = []
+
+    for _ in range(3):
+        create_response = client.post(f"/claims/{claim.id}/verify")
+        assert create_response.status_code == 200
+
+        created_result_ids.append(create_response.json()["id"])
+
+    response = client.get(
+        f"/verification-results/claim/{claim.id}?limit=2&offset=1"
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert isinstance(result, dict)
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 1
+    assert len(result["items"]) == 2
+    assert result["has_more"] is False
+
+    returned_result_ids = [
+        verification_result["id"]
+        for verification_result in result["items"]
+    ]
+
+    assert created_result_ids[-1] not in returned_result_ids
+
+    assert all(
+        verification_result["claim_id"] == claim.id
+        for verification_result in result["items"]
+    )
+
+def test_get_verification_results_for_claim_rejects_zero_limit(
+    sample_claim_with_chunk,
+):
+    claim = sample_claim_with_chunk["claim"]
+
+    response = client.get(
+        f"/verification-results/claim/{claim.id}?limit=0"
+    )
+
+    assert response.status_code == 422
+
+def test_get_verification_results_for_claim_rejects_negative_offset(
+    sample_claim_with_chunk,
+):
+    claim = sample_claim_with_chunk["claim"]
+
+    response = client.get(
+        f"/verification-results/claim/{claim.id}?offset=-1"
+    )
 
     assert response.status_code == 422
 
