@@ -52,3 +52,9 @@ class VerificationDetailResponse(BaseModel):
     claim: ClaimSummaryResponse
     evidence: EvidenceDetailResponse | None
 
+class VerificationMode(str, Enum):
+    RULE_BASED = "rule_based"
+    OPEN_AI = "openai"
+
+class ClaimVerificationRequest(BaseModel):
+    mode: VerificationMode = VerificationMode.RULE_BASED

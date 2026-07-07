@@ -1,18 +1,67 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.db.models import Claim, VerificationResult
-from app.schemas.claim import ClaimCreate, ClaimResponse
+from app.db.models import (
+    Claim, 
+    VerificationResult,
+    DocumentChunk,
+    )
+from app.schemas.claim import (
+    ClaimCreate, 
+    ClaimResponse, 
+    )
 from app.schemas.evidence import EvidenceResponse
-from app.schemas.verification import VerificationResultResponse
+from app.schemas.verification import (
+    ClaimVerificationRequest,
+    VerificationMode,
+    VerificationResultResponse
+    )
 from app.schemas.pagination import PaginatedResponse
+from app.schemas.llm_verification import (
+    LLMEvidenceCandidate, 
+    LLMVerificationInput, 
+    )
 from app.services.retrieval import retrieve_evidence_for_claim
 from app.services.verification import generate_rule_based_verification
 from app.services.pagination import build_paginated_response
+from app.services.llm_verification import(
+    OpenAIVerificationProvider,
+    RuleBasedFallbackProvider,
+    )
 from sqlalchemy import or_
 
 
 router = APIRouter(prefix="/claims", tags=["claims"])
+
+def build_llm_evidence_candidates(
+        evidences: list[EvidenceResponse],
+        db: Session
+) -> list[LLMEvidenceCandidate]:
+    candidates = []
+
+    for evidence in evidences:
+        chunk = (
+            db.query(DocumentChunk)
+            .filter(DocumentChunk.id == evidence.chunk_id)
+            .first()
+        )
+
+        if chunk is None:
+            raise HTTPException(status_code = 404, detail = "Chunk not found")
+        candidates.append(
+            LLMEvidenceCandidate(
+                chunk_id=evidence.chunk_id,
+                document_id=evidence.document_id,
+                filename=chunk.document.filename,
+                page_number=evidence.page_number,
+                chunk_index=evidence.chunk_index,
+                content=evidence.content,
+                score=evidence.score,
+            )
+        )
+
+    return candidates
+
 
 @router.post("/", response_model=ClaimResponse)
 def create_claim(claim: ClaimCreate, db: Session = Depends(get_db)):
@@ -23,13 +72,44 @@ def create_claim(claim: ClaimCreate, db: Session = Depends(get_db)):
     return new_claim
 
 @router.post("/{claim_id}/verify", response_model=VerificationResultResponse)
-def verify_claim(claim_id: int, db: Session = Depends(get_db)):
+def verify_claim(claim_id: int, db: Session = Depends(get_db), verification_request: ClaimVerificationRequest | None = None,):
     claim = db.query(Claim).filter(Claim.id == claim_id).first()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    mode = (
+        verification_request.mode
+        if verification_request is not None
+        else VerificationMode.RULE_BASED
+    )
     evidences = retrieve_evidence_for_claim(claim, db)
-    verification_data = generate_rule_based_verification(evidences)
-
+    if mode == VerificationMode.RULE_BASED:
+        verification_data = generate_rule_based_verification(evidences)
+    elif mode == VerificationMode.OPEN_AI:
+        llm_evidence_candidates = build_llm_evidence_candidates(evidences, db)
+        llm_input = LLMVerificationInput(
+            claim_text = claim.claim_text,
+            source_text = claim.source_text,
+            evidence_candidates = llm_evidence_candidates
+        )
+        try:
+            openai_provider = OpenAIVerificationProvider()
+            llm_output = openai_provider.verify(llm_input)
+        except Exception:
+            fallback_provider = RuleBasedFallbackProvider()
+            llm_output = fallback_provider.verify(llm_input)
+       
+        verification_data = {
+            "evidence_chunk_id": llm_output.evidence_chunk_id,
+            "status": llm_output.status.value,
+            "confidence": llm_output.confidence,
+            "reasoning": llm_output.reasoning,
+        }
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported verification mode",
+        )
+        
     new_verification_result = VerificationResult(
         claim_id = claim.id,
         evidence_chunk_id = verification_data["evidence_chunk_id"],

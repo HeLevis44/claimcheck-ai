@@ -1,4 +1,6 @@
 from fastapi.testclient import TestClient
+from app.schemas.llm_verification import LLMVerificationOutput
+from app.schemas.verification import VerificationStatus
 from app.main import app
 
 client = TestClient(app)
@@ -189,3 +191,163 @@ def test_get_claims_search_returns_empty_result_when_no_match():
     assert result["items"] == []
     assert result["total"] == 0
     assert result["has_more"] is False
+
+def test_verify_claim_defaults_to_rule_based_when_body_is_omitted():
+    claim_response = client.post(
+        "/claims/",
+        json={
+            "claim_text": "Orion completed the Zephyr project in 2025.",
+            "source_text": "A project completion claim.",
+        },
+    )
+    assert claim_response.status_code == 200
+
+    claim_id = claim_response.json()["id"]
+
+    response = client.post(f"/claims/{claim_id}/verify")
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == "not_enough_evidence"
+    assert result["evidence_chunk_id"] is None
+
+def test_verify_claim_uses_openai_provider_when_mode_is_openai(monkeypatch):
+    class FakeOpenAIVerificationProvider:
+        last_input = None
+
+        def verify(self, input_data):
+            FakeOpenAIVerificationProvider.last_input = input_data
+
+            return LLMVerificationOutput(
+                status=VerificationStatus.NOT_ENOUGH_EVIDENCE,
+                confidence=0.2,
+                reasoning="No provided evidence sufficiently supports the claim.",
+                evidence_chunk_id=None,
+            )
+
+    monkeypatch.setattr(
+        "app.api.claims.OpenAIVerificationProvider",
+        FakeOpenAIVerificationProvider,
+    )
+
+    claim_response = client.post(
+        "/claims/",
+        json={
+            "claim_text": "Orion completed the Zephyr project in 2025.",
+            "source_text": "A project completion claim.",
+        },
+    )
+    assert claim_response.status_code == 200
+
+    claim_id = claim_response.json()["id"]
+
+    response = client.post(
+        f"/claims/{claim_id}/verify",
+        json={"mode": "openai"},
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["status"] == "not_enough_evidence"
+    assert result["confidence"] == 0.2
+    assert result["evidence_chunk_id"] is None
+
+    assert FakeOpenAIVerificationProvider.last_input is not None
+    assert (
+        FakeOpenAIVerificationProvider.last_input.claim_text
+        == "Orion completed the Zephyr project in 2025."
+    )
+    assert (
+        FakeOpenAIVerificationProvider.last_input.source_text
+        == "A project completion claim."
+    )
+    assert FakeOpenAIVerificationProvider.last_input.evidence_candidates == []
+
+def test_verify_claim_rejects_invalid_mode():
+    claim_response = client.post(
+        "/claims/",
+        json={
+            "claim_text": "Orion completed the Zephyr project in 2025.",
+            "source_text": "A project completion claim.",
+        },
+    )
+    assert claim_response.status_code == 200
+
+    claim_id = claim_response.json()["id"]
+
+    response = client.post(
+        f"/claims/{claim_id}/verify",
+        json={"mode": "unknown"},
+    )
+
+    assert response.status_code == 422
+
+    result = response.json()
+    assert result["error"]["code"] == "validation_error"
+    assert result["error"]["message"] == "Request validation failed"
+    assert isinstance(result["error"]["fields"], list)
+    assert result["error"]["fields"]
+
+def test_verify_claim_falls_back_to_rule_based_when_openai_provider_fails(
+    monkeypatch,
+):
+    from app.schemas.llm_verification import LLMVerificationOutput
+    from app.schemas.verification import VerificationStatus
+
+    class FailingOpenAIVerificationProvider:
+        def __init__(self):
+            raise RuntimeError("OpenAI provider is unavailable")
+
+    class FakeRuleBasedFallbackProvider:
+        last_input = None
+
+        def verify(self, input_data):
+            FakeRuleBasedFallbackProvider.last_input = input_data
+
+            return LLMVerificationOutput(
+                status=VerificationStatus.NOT_ENOUGH_EVIDENCE,
+                confidence=0.2,
+                reasoning="Fallback verification result.",
+                evidence_chunk_id=None,
+            )
+
+    monkeypatch.setattr(
+        "app.api.claims.OpenAIVerificationProvider",
+        FailingOpenAIVerificationProvider,
+    )
+    monkeypatch.setattr(
+        "app.api.claims.RuleBasedFallbackProvider",
+        FakeRuleBasedFallbackProvider,
+    )
+
+    claim_response = client.post(
+        "/claims/",
+        json={
+            "claim_text": "Orion completed the Zephyr project in 2025.",
+            "source_text": "A project completion claim.",
+        },
+    )
+    assert claim_response.status_code == 200
+
+    claim_id = claim_response.json()["id"]
+
+    response = client.post(
+        f"/claims/{claim_id}/verify",
+        json={"mode": "openai"},
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["status"] == "not_enough_evidence"
+    assert result["confidence"] == 0.2
+    assert result["reasoning"] == "Fallback verification result."
+    assert result["evidence_chunk_id"] is None
+
+    assert FakeRuleBasedFallbackProvider.last_input is not None
+    assert (
+        FakeRuleBasedFallbackProvider.last_input.claim_text
+        == "Orion completed the Zephyr project in 2025."
+    )
+    assert FakeRuleBasedFallbackProvider.last_input.evidence_candidates == []
