@@ -1,8 +1,8 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {getClaims, createClaim, verifyClaim} from "@/lib/api";
-import type {Claim, VerificationResult} from "@/types/api";
+import {getClaims, createClaim, verifyClaim, getClaimEvidence} from "@/lib/api";
+import type {Claim, VerificationResult, Evidence} from "@/types/api";
 
 export default function Home() {
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -13,6 +13,8 @@ export default function Home() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
   const [verifyingClaimId, setVerifyingClaimId] = useState<number | null>(null)
+  const [evidences, setEvidences] = useState<Evidence[]>([])
+  const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false)
 
   useEffect(() => {
     async function loadClaims() {
@@ -66,10 +68,15 @@ export default function Home() {
   try {
     setError(null);
     setVerificationResult(null);
-    setVerifyingClaimId(claim_id);
+    setEvidences([])
+    setShowAllEvidence(false)
+    setVerifyingClaimId(claim_id)
 
     const result = await verifyClaim(claim_id, "rule_based")
     setVerificationResult(result)
+
+    const evidenceData = await getClaimEvidence(claim_id)
+    setEvidences(evidenceData)
 
   } catch (err) {
     if (err instanceof Error) {
@@ -81,6 +88,7 @@ export default function Home() {
     setVerifyingClaimId(null);
   }
 }
+  const visibleEvidences = showAllEvidence ? evidences : evidences.slice(0, 3)
 
   if (loading) {
     return (
@@ -111,8 +119,7 @@ export default function Home() {
             {error}
           </section>
         )}
-
-
+        
         <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur">
           <form onSubmit={handleCreateClaim} className="space-y-5">
             <div className="flex flex-col gap-2">
@@ -176,6 +183,57 @@ export default function Home() {
           ) : (
             <p className="mt-3 text-sm text-neutral-400">
               Select a claim and click Verify to see the result.
+            </p>
+          )}
+        </section>
+
+        <section className="mb-6 min-h-28 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 transition duration-300">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Evidence used</p>
+          {verifyingClaimId !== null ? (
+            <div className="mt-3 flex animate-[fadeIn_0.2s_ease-out] items-center gap-3 text-sm text-neutral-500">
+              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-neutral-900" />
+              <span>Retrieving evidence...</span>
+            </div>
+          ) : verificationResult ? (
+            evidences.length === 0 ? (
+              <p className="mt-3 text-sm text-neutral-400">No evidence found for this claim.</p>
+            ) : (
+              <>
+                <ul className="mt-3 space-y-3">
+                  {visibleEvidences.map((evidence) => (
+                    <li
+                      key={evidence.chunk_id}
+                      className="animate-[fadeInScale_0.35s_ease-out] rounded-2xl bg-neutral-50 p-4"
+                    >
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
+                          score {evidence.score}
+                        </span>
+                        <span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
+                          page {evidence.page_number ?? "N/A"}
+                        </span>
+                      </div>
+                      <p className="line-clamp-4 text-sm leading-6 text-neutral-700">
+                        {evidence.content}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+
+                {evidences.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllEvidence(!showAllEvidence)}
+                    className="mt-4 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:border-neutral-500 hover:bg-neutral-100"
+                  >
+                    {showAllEvidence ? "Show less" : `Show all ${evidences.length} evidence chunks`}
+                  </button>
+                )}
+              </>
+            )
+          ) : (
+            <p className="mt-3 text-sm text-neutral-400">
+              Evidence will appear here after verification.
             </p>
           )}
         </section>
