@@ -1,8 +1,8 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {getClaims, createClaim, verifyClaim, getClaimEvidence, uploadPdf} from "@/lib/api";
-import type {Claim, VerificationResult, Evidence} from "@/types/api";
+import {getClaims, createClaim, verifyClaim, getClaimEvidence, uploadPdf, getDocuments} from "@/lib/api";
+import type {Claim, VerificationResult, Evidence, Document} from "@/types/api";
 
 export default function Home() {
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -18,25 +18,28 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState<boolean>(false)
   const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null)
+  const [documents, setDocuments] = useState<Document[]>([]);
 
   useEffect(() => {
-    async function loadClaims() {
+    async function loadInitialData() {
       try {
-        const data = await getClaims();
-        setClaims(data.items);
+        const claimData = await getClaims();
+        const documentData = await getDocuments();
+        setDocuments(documentData.items);
+        setClaims(claimData.items);
       } catch (err) {
         if(err instanceof Error){
           setError(err.message);
         }
         else{
-          setError("Failed to load claims")
+          setError("Failed to load data")
         }
       } finally {
         setLoading(false)
       }
     }
 
-    loadClaims();
+    loadInitialData();
   }, []);
 
   async function handleCreateClaim(event: React.FormEvent<HTMLFormElement>) {
@@ -103,6 +106,7 @@ export default function Home() {
     setError(null);
     const document = await uploadPdf(selectedFile);
     setUploadedDocumentName(document.filename);
+    setDocuments((currentDocuments) => [document, ...currentDocuments])
     setSelectedFile(null)
   }catch (err) {
     if (err instanceof Error) {
@@ -206,6 +210,39 @@ export default function Home() {
             <p className="mt-4 text-sm text-neutral-500">
               Uploaded: {uploadedDocumentName}
             </p>
+          )}
+        </section>
+        
+        <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Uploaded documents</h2>
+              <p className="mt-1 text-sm text-neutral-500">{documents.length} total</p>
+            </div>
+          </div>
+
+          {documents.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-neutral-200 p-8 text-center text-neutral-500">
+              No documents uploaded yet.
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {documents.map((document) => (
+                <li
+                  key={document.id}
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="break-words text-sm font-medium leading-6 text-neutral-800">
+                      {document.filename}
+                    </p>
+                    <span className="w-fit rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">
+                      {document.file_type}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
