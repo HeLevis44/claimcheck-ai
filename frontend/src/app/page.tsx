@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {getClaims, createClaim, verifyClaim, getClaimEvidence} from "@/lib/api";
+import {getClaims, createClaim, verifyClaim, getClaimEvidence, uploadPdf} from "@/lib/api";
 import type {Claim, VerificationResult, Evidence} from "@/types/api";
 
 export default function Home() {
@@ -15,6 +15,9 @@ export default function Home() {
   const [verifyingClaimId, setVerifyingClaimId] = useState<number | null>(null)
   const [evidences, setEvidences] = useState<Evidence[]>([])
   const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState<boolean>(false)
+  const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadClaims() {
@@ -88,6 +91,29 @@ export default function Home() {
     setVerifyingClaimId(null);
   }
 }
+
+  async function handleUploadPdf(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  if (selectedFile === null){
+    return;
+  }
+
+  try {
+    setUploading(true);
+    setError(null);
+    const document = await uploadPdf(selectedFile);
+    setUploadedDocumentName(document.filename);
+    setSelectedFile(null)
+  }catch (err) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError("Failed to upload file");
+    }  
+  } finally {
+    setUploading(false);
+  }
+}
   const visibleEvidences = showAllEvidence ? evidences : evidences.slice(0, 3)
 
   if (loading) {
@@ -152,6 +178,35 @@ export default function Home() {
               </button>
             </div>
           </form>
+        </section>
+
+        <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur">
+          <p className="mb-3 text-sm font-medium text-neutral-500">Upload PDF</p>
+          <form onSubmit={handleUploadPdf} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setSelectedFile(file);
+              }}
+              className="text-sm text-neutral-600 file:mr-4 file:rounded-full file:border-0 file:bg-neutral-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
+            />
+
+            <button
+              type="submit"
+              disabled={uploading || selectedFile === null}
+              className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploading ? "Uploading..." : "Upload PDF"}
+            </button>
+          </form>
+
+          {uploadedDocumentName && (
+            <p className="mt-4 text-sm text-neutral-500">
+              Uploaded: {uploadedDocumentName}
+            </p>
+          )}
         </section>
 
         <section className="mb-6 min-h-28 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 transition duration-300">
