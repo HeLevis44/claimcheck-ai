@@ -1,7 +1,14 @@
-"use client";
+ "use client";
 
 import {useEffect, useState} from "react";
-import {getClaims, createClaim, verifyClaim, getClaimEvidence, uploadPdf, getDocuments} from "@/lib/api";
+import {
+  getClaims,
+  createClaim,
+  verifyClaim,
+  getClaimEvidence,
+  uploadPdf,
+  getDocuments,
+} from "@/lib/api";
 import type {Claim, VerificationResult, Evidence, Document} from "@/types/api";
 
 export default function Home() {
@@ -11,13 +18,13 @@ export default function Home() {
   const [claimText, setClaimText] = useState<string>("");
   const [sourceText, setSourceText] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
-  const [verifyingClaimId, setVerifyingClaimId] = useState<number | null>(null)
-  const [evidences, setEvidences] = useState<Evidence[]>([])
-  const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState<boolean>(false)
-  const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null)
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [verifyingClaimId, setVerifyingClaimId] = useState<number | null>(null);
+  const [evidences, setEvidences] = useState<Evidence[]>([]);
+  const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
 
   useEffect(() => {
@@ -28,14 +35,13 @@ export default function Home() {
         setDocuments(documentData.items);
         setClaims(claimData.items);
       } catch (err) {
-        if(err instanceof Error){
+        if (err instanceof Error) {
           setError(err.message);
-        }
-        else{
-          setError("Failed to load data")
+        } else {
+          setError("Failed to load data");
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
@@ -44,19 +50,21 @@ export default function Home() {
 
   async function handleCreateClaim(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     if (claimText.trim() === "") {
       return;
     }
+
     try {
       setSubmitting(true);
       setError(null);
 
       const new_claim = await createClaim(
         claimText,
-        sourceText.trim() === "" ? "": sourceText
+        sourceText.trim() === "" ? "" : sourceText
       );
 
-      setClaims([new_claim,...claims]);
+      setClaims([new_claim, ...claims]);
       setClaimText("");
       setSourceText("");
     } catch (err) {
@@ -71,54 +79,56 @@ export default function Home() {
   }
 
   async function handleVerifyClaim(claim_id: number) {
-  try {
-    setError(null);
-    setVerificationResult(null);
-    setEvidences([])
-    setShowAllEvidence(false)
-    setVerifyingClaimId(claim_id)
+    try {
+      setError(null);
+      setVerificationResult(null);
+      setEvidences([]);
+      setShowAllEvidence(false);
+      setVerifyingClaimId(claim_id);
 
-    const result = await verifyClaim(claim_id, "rule_based")
-    setVerificationResult(result)
+      const result = await verifyClaim(claim_id, "rule_based");
+      setVerificationResult(result);
 
-    const evidenceData = await getClaimEvidence(claim_id)
-    setEvidences(evidenceData)
-
-  } catch (err) {
-    if (err instanceof Error) {
-      setError(err.message);
-    } else {
-      setError("Failed to verify claim");
-    }  
-  } finally {
-    setVerifyingClaimId(null);
+      const evidenceData = await getClaimEvidence(claim_id);
+      setEvidences(evidenceData);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to verify claim");
+      }
+    } finally {
+      setVerifyingClaimId(null);
+    }
   }
-}
 
   async function handleUploadPdf(event: React.FormEvent<HTMLFormElement>) {
-  event.preventDefault();
-  if (selectedFile === null){
-    return;
+    event.preventDefault();
+
+    if (selectedFile === null) {
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError(null);
+
+      const document = await uploadPdf(selectedFile);
+      setUploadedDocumentName(document.filename);
+      setDocuments((currentDocuments) => [document, ...currentDocuments]);
+      setSelectedFile(null);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to upload file");
+      }
+    } finally {
+      setUploading(false);
+    }
   }
 
-  try {
-    setUploading(true);
-    setError(null);
-    const document = await uploadPdf(selectedFile);
-    setUploadedDocumentName(document.filename);
-    setDocuments((currentDocuments) => [document, ...currentDocuments])
-    setSelectedFile(null)
-  }catch (err) {
-    if (err instanceof Error) {
-      setError(err.message);
-    } else {
-      setError("Failed to upload file");
-    }  
-  } finally {
-    setUploading(false);
-  }
-}
-  const visibleEvidences = showAllEvidence ? evidences : evidences.slice(0, 3)
+  const visibleEvidences = showAllEvidence ? evidences : evidences.slice(0, 3);
 
   if (loading) {
     return (
@@ -212,7 +222,7 @@ export default function Home() {
             </p>
           )}
         </section>
-        
+
         <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
@@ -271,7 +281,7 @@ export default function Home() {
               <p className="text-sm leading-6 text-neutral-700">
                 {verificationResult.reasoning || "No reasoning returned."}
               </p>
-              </div>
+            </div>
           ) : (
             <p className="mt-3 text-sm text-neutral-400">
               Select a claim and click Verify to see the result.
@@ -345,14 +355,17 @@ export default function Home() {
           ) : (
             <ul className="space-y-3">
               {claims.map((claim) => (
-                <li key={claim.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm">
+                <li
+                  key={claim.id}
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <p className="break-words text-sm leading-6 text-neutral-800">{claim.claim_text}</p>
                     <button
                       type="button"
                       onClick={() => handleVerifyClaim(claim.id)}
                       disabled={verifyingClaimId === claim.id}
-                      className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition duration-200 hover:-translate-y-0.5 hover:border-neutral-500 hover:bg-neutral-100 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50" 
+                      className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition duration-200 hover:-translate-y-0.5 hover:border-neutral-500 hover:bg-neutral-100 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {verifyingClaimId === claim.id ? "Verifying..." : "Verify"}
                     </button>
