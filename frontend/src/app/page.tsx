@@ -1,6 +1,8 @@
- "use client";
+"use client";
 
 import {useEffect, useState} from "react";
+import {HeaderCard} from "@/components/HeaderCard";
+import {ErrorBanner} from "@/components/ErrorBanner";
 import {
   getClaims,
   createClaim,
@@ -146,19 +148,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f5f5f7] px-6 py-12 text-[#1d1d1f]">
       <div className="mx-auto max-w-4xl">
-        <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <p className="mb-3 text-sm font-medium text-neutral-500">AI-assisted claim verification</p>
-          <h1 className="text-5xl font-semibold tracking-tight">ClaimCheck AI</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-neutral-600">
-            Create a claim, run a quick rule-based verification, and review the result in one clean workspace.
-          </p>
-        </section>
+        <HeaderCard />
 
-        {error && (
-          <section className="mb-6 animate-[fadeIn_0.25s_ease-out] rounded-3xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-700">
-            {error}
-          </section>
-        )}
+        <ErrorBanner error={error} />
         
         <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur">
           <form onSubmit={handleCreateClaim} className="space-y-5">
