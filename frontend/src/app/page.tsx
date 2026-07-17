@@ -4,6 +4,11 @@ import {useEffect, useState} from "react";
 import {HeaderCard} from "@/components/HeaderCard";
 import {ErrorBanner} from "@/components/ErrorBanner";
 import {UploadPdfCard} from "@/components/UploadPdfCard";
+import {DocumentsCard} from "@/components/DocumentsCard";
+import {ClaimsCard} from "@/components/ClaimsCard";
+import {CreateClaimCard} from "@/components/CreateClaimCard";
+import {VerificationResultCard} from "@/components/VerificationResultCard";
+import {EvidenceCard} from "@/components/EvidenceCard";
 import {
   getClaims,
   createClaim,
@@ -153,39 +158,14 @@ export default function Home() {
 
         <ErrorBanner error={error} />
         
-        <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur">
-          <form onSubmit={handleCreateClaim} className="space-y-5">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-neutral-700">Claim</label>
-              <textarea
-                className="min-h-28 resize-none rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-base outline-none transition focus:border-neutral-400 focus:bg-white"
-                value={claimText}
-                onChange={(event) => setClaimText(event.target.value)}
-                placeholder="Enter a claim to verify"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-neutral-700">Source text</label>
-              <textarea
-                className="min-h-28 resize-none rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-base outline-none transition focus:border-neutral-400 focus:bg-white"
-                value={sourceText}
-                onChange={(event) => setSourceText(event.target.value)}
-                placeholder="Optional source text"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting ? "Creating..." : "Create Claim"}
-              </button>
-            </div>
-          </form>
-        </section>
+        <CreateClaimCard
+          claimText={claimText}
+          sourceText={sourceText}
+          submitting={submitting}
+          onClaimTextChange={setClaimText}
+          onSourceTextChange={setSourceText}
+          onCreateClaim={handleCreateClaim}
+        />
 
         <UploadPdfCard
           selectedFile={selectedFile}
@@ -195,158 +175,28 @@ export default function Home() {
           onUploadPdf={handleUploadPdf}
         />
 
-        <section className="mb-8 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Uploaded documents</h2>
-              <p className="mt-1 text-sm text-neutral-500">{documents.length} total</p>
-            </div>
-          </div>
+        <DocumentsCard documents={documents} />
 
-          {documents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-neutral-200 p-8 text-center text-neutral-500">
-              No documents uploaded yet.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {documents.map((document) => (
-                <li
-                  key={document.id}
-                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="break-words text-sm font-medium leading-6 text-neutral-800">
-                      {document.filename}
-                    </p>
-                    <span className="w-fit rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">
-                      {document.file_type}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <VerificationResultCard
+          verifyingClaimId={verifyingClaimId}
+          verificationResult={verificationResult}
+        />
 
-        <section className="mb-6 min-h-28 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 transition duration-300">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Latest verification</p>
-          {verifyingClaimId !== null ? (
-            <div className="mt-3 flex animate-[fadeIn_0.2s_ease-out] items-center gap-3 text-sm text-neutral-500">
-              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-neutral-900" />
-              <span>Checking claim...</span>
-            </div>
-          ) : verificationResult ? (
-            <div
-              key={verificationResult.id}
-              className="mt-3 animate-[fadeInScale_0.35s_ease-out] rounded-2xl bg-neutral-50 p-4"
-            >
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
-                  {verificationResult.status}
-                </span>
+        <EvidenceCard
+          evidences={evidences}
+          visibleEvidences={visibleEvidences}
+          verifyingClaimId={verifyingClaimId}
+          verificationResult={verificationResult}
+          showAllEvidence={showAllEvidence}
+          onToggleShowAllEvidence={() => setShowAllEvidence(!showAllEvidence)}
+        />
 
-                <span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
-                  confidence {verificationResult.confidence}
-                </span>
-              </div>
+        <ClaimsCard
+          claims={claims}
+          verifyingClaimId={verifyingClaimId}
+          onVerifyClaim={handleVerifyClaim}
+        />
 
-              <p className="text-sm leading-6 text-neutral-700">
-                {verificationResult.reasoning || "No reasoning returned."}
-              </p>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-neutral-400">
-              Select a claim and click Verify to see the result.
-            </p>
-          )}
-        </section>
-
-        <section className="mb-6 min-h-28 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 transition duration-300">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Evidence used</p>
-          {verifyingClaimId !== null ? (
-            <div className="mt-3 flex animate-[fadeIn_0.2s_ease-out] items-center gap-3 text-sm text-neutral-500">
-              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-neutral-900" />
-              <span>Retrieving evidence...</span>
-            </div>
-          ) : verificationResult ? (
-            evidences.length === 0 ? (
-              <p className="mt-3 text-sm text-neutral-400">No evidence found for this claim.</p>
-            ) : (
-              <>
-                <ul className="mt-3 space-y-3">
-                  {visibleEvidences.map((evidence) => (
-                    <li
-                      key={evidence.chunk_id}
-                      className="animate-[fadeInScale_0.35s_ease-out] rounded-2xl bg-neutral-50 p-4"
-                    >
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
-                          score {evidence.score}
-                        </span>
-                        <span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
-                          page {evidence.page_number ?? "N/A"}
-                        </span>
-                      </div>
-                      <p className="line-clamp-4 text-sm leading-6 text-neutral-700">
-                        {evidence.content}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-
-                {evidences.length > 3 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllEvidence(!showAllEvidence)}
-                    className="mt-4 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:border-neutral-500 hover:bg-neutral-100"
-                  >
-                    {showAllEvidence ? "Show less" : `Show all ${evidences.length} evidence chunks`}
-                  </button>
-                )}
-              </>
-            )
-          ) : (
-            <p className="mt-3 text-sm text-neutral-400">
-              Evidence will appear here after verification.
-            </p>
-          )}
-        </section>
-
-        <section className="rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-black/5">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Claims</h2>
-              <p className="mt-1 text-sm text-neutral-500">{claims.length} total</p>
-            </div>
-          </div>
-
-          {claims.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-neutral-200 p-8 text-center text-neutral-500">
-              No claims yet.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {claims.map((claim) => (
-                <li
-                  key={claim.id}
-                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="break-words text-sm leading-6 text-neutral-800">{claim.claim_text}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleVerifyClaim(claim.id)}
-                      disabled={verifyingClaimId === claim.id}
-                      className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition duration-200 hover:-translate-y-0.5 hover:border-neutral-500 hover:bg-neutral-100 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {verifyingClaimId === claim.id ? "Verifying..." : "Verify"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
       <style jsx global>{`
         @keyframes fadeIn {
