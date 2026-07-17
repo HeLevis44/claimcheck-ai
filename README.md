@@ -1,16 +1,31 @@
 # ClaimCheck AI
 
-ClaimCheck AI is a source-grounded claim verification backend for checking whether a written claim is supported by evidence from uploaded PDF documents.
+ClaimCheck AI is a full-stack source-grounded claim verification app. Users can upload PDF documents, create written claims, retrieve evidence chunks from uploaded sources, and generate a verification result with status, confidence, reasoning, and evidence linkage.
 
-Users can upload source PDFs, extract and chunk document text, create claims, retrieve ranked evidence candidates, and save evidence-linked verification results. The current project is a backend MVP designed to support a later frontend workflow.
+The project is designed as a practical SDE + AI portfolio project. It combines a FastAPI backend, PostgreSQL persistence, PDF ingestion, evidence retrieval, optional OpenAI verification, and a Next.js frontend workflow.
 
 ## Problem
 
 AI-generated writing can contain unsupported claims, misleading citations, or fabricated references. Even when a source document is available, the document may not actually support the claim.
 
-ClaimCheck AI addresses this by grounding verification in uploaded source documents and linking each result to a selected evidence chunk when evidence is available.
+ClaimCheck AI addresses this by grounding verification in uploaded source documents and showing the evidence chunks used to evaluate each claim.
 
 ## Current MVP Features
+
+### Frontend
+
+- Upload PDF files from the browser
+- Display uploaded documents
+- Create claims from the UI
+- Display claim list
+- Verify claims with a rule-based verification flow
+- Display latest verification status, confidence, and reasoning
+- Display evidence chunks used for verification
+- Show the top 3 evidence chunks by default with expand/collapse support
+- Reusable React component structure for homepage cards
+- Loading, empty, disabled, and error states for the main workflow
+
+### Backend
 
 - Upload PDF documents through FastAPI
 - Extract PDF text with PyMuPDF
@@ -28,51 +43,14 @@ ClaimCheck AI addresses this by grounding verification in uploaded source docume
 - Return consistent HTTP and validation error responses
 - Test core backend behavior with pytest, FastAPI TestClient, fake providers, and mocked provider behavior
 
-## Verification Modes
-
-`POST /claims/{claim_id}/verify` supports two modes.
-
-### `rule_based`
-
-This is the default mode. It does not require an API key and preserves the original MVP behavior.
-
-The rule-based verifier uses retrieval scores:
-
-- No evidence found:
-  - status: `not_enough_evidence`
-  - confidence: `0.2`
-- Top evidence score is `3` or higher:
-  - status: `likely_supported`
-  - confidence: `0.8`
-- Top evidence score is below `3`:
-  - status: `weak_evidence`
-  - confidence: `0.5`
-
-### `openai`
-
-This mode converts the claim and retrieved evidence candidates into an `LLMVerificationInput` and sends it to `OpenAIVerificationProvider`.
-
-The provider requests a structured verification result with the following fields:
-
-```json
-{
-  "status": "likely_supported",
-  "confidence": 0.9,
-  "reasoning": "The selected evidence directly supports the claim.",
-  "evidence_chunk_id": 101
-}
-```
-
-The provider validates that:
-
-- `status` is one of `likely_supported`, `weak_evidence`, or `not_enough_evidence`
-- `confidence` is between `0` and `1`
-- `reasoning` is not empty
-- `evidence_chunk_id` is one of the retrieved evidence chunk IDs or `null`
-
-If the OpenAI provider cannot initialize or verify the claim, the endpoint automatically uses `RuleBasedFallbackProvider` and still returns a verification result.
-
 ## Tech Stack
+
+### Frontend
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
 
 ### Backend
 
@@ -92,40 +70,7 @@ If the OpenAI provider cannot initialize or verify the claim, the endpoint autom
 - httpx / FastAPI TestClient
 - Git and GitHub
 
-## Backend Architecture
-
-```text
-FastAPI Backend
-  |
-  +--> API Layer
-  |     +--> health.py
-  |     +--> documents.py
-  |     +--> chunks.py
-  |     +--> upload.py
-  |     +--> claims.py
-  |     +--> verification.py
-  |
-  +--> Service Layer
-  |     +--> retrieval.py
-  |     +--> verification.py
-  |     +--> llm_verification.py
-  |     +--> verification_detail.py
-  |     +--> pagination.py
-  |
-  +--> Schema Layer
-  |     +--> document.py
-  |     +--> claim.py
-  |     +--> verification.py
-  |     +--> llm_verification.py
-  |     +--> pagination.py
-  |     +--> error.py
-  |
-  +--> Database Layer
-        +--> SQLAlchemy models
-        +--> PostgreSQL
-```
-
-## Current Data Flow
+## Application Flow
 
 ```text
 Upload PDF
@@ -140,13 +85,99 @@ Create claim
   ↓
 Retrieve ranked evidence chunks
   ↓
-Choose verification mode
+Verify claim
   ├── rule_based
   └── openai
         ↓ on provider failure
       rule-based fallback
   ↓
-Store and return verification result
+Display verification result and evidence chunks in the frontend
+```
+
+## Frontend Structure
+
+```text
+frontend/
+  src/
+    app/
+      globals.css
+      layout.tsx
+      page.tsx
+    components/
+      HeaderCard.tsx
+      ErrorBanner.tsx
+      CreateClaimCard.tsx
+      UploadPdfCard.tsx
+      DocumentsCard.tsx
+      VerificationResultCard.tsx
+      EvidenceCard.tsx
+      ClaimsCard.tsx
+    lib/
+      api.ts
+    types/
+      api.ts
+```
+
+### Frontend Component Roles
+
+```text
+page.tsx
+  Owns page state and business flow.
+  Loads claims and documents.
+  Handles claim creation, PDF upload, verification, and evidence retrieval.
+
+components/
+  Own reusable UI cards.
+  Receive data and event handlers through props.
+  Do not directly call backend APIs.
+
+lib/api.ts
+  Centralizes frontend API requests to the FastAPI backend.
+
+types/api.ts
+  Defines shared TypeScript response types used by the frontend.
+```
+
+## Backend Architecture
+
+```text
+backend/
+  app/
+    api/
+      health.py
+      documents.py
+      chunks.py
+      upload.py
+      claims.py
+      verification.py
+    db/
+      database.py
+      models.py
+    schemas/
+      document.py
+      claim.py
+      verification.py
+      llm_verification.py
+      pagination.py
+      error.py
+    services/
+      retrieval.py
+      verification.py
+      llm_verification.py
+      verification_detail.py
+      pagination.py
+    main.py
+  tests/
+    conftest.py
+    test_health.py
+    test_documents.py
+    test_upload.py
+    test_claims.py
+    test_evidence.py
+    test_verification.py
+    test_llm_verification.py
+  requirements.txt
+  .env.example
 ```
 
 ## Main API Endpoints
@@ -267,6 +298,50 @@ The verification-result list endpoints support `limit` and `offset`.
 
 When no evidence is selected, `evidence` is `null`.
 
+## Verification Modes
+
+`POST /claims/{claim_id}/verify` supports two modes.
+
+### `rule_based`
+
+This is the default mode. It does not require an API key and preserves the original MVP behavior.
+
+The rule-based verifier uses retrieval scores:
+
+- No evidence found:
+  - status: `not_enough_evidence`
+  - confidence: `0.2`
+- Top evidence score is `3` or higher:
+  - status: `likely_supported`
+  - confidence: `0.8`
+- Top evidence score is below `3`:
+  - status: `weak_evidence`
+  - confidence: `0.5`
+
+### `openai`
+
+This mode converts the claim and retrieved evidence candidates into an `LLMVerificationInput` and sends it to `OpenAIVerificationProvider`.
+
+The provider requests a structured verification result with the following fields:
+
+```json
+{
+  "status": "likely_supported",
+  "confidence": 0.9,
+  "reasoning": "The selected evidence directly supports the claim.",
+  "evidence_chunk_id": 101
+}
+```
+
+The provider validates that:
+
+- `status` is one of `likely_supported`, `weak_evidence`, or `not_enough_evidence`
+- `confidence` is between `0` and `1`
+- `reasoning` is not empty
+- `evidence_chunk_id` is one of the retrieved evidence chunk IDs or `null`
+
+If the OpenAI provider cannot initialize or verify the claim, the endpoint automatically uses `RuleBasedFallbackProvider` and still returns a verification result.
+
 ## Shared Pagination Format
 
 Paginated list endpoints return:
@@ -308,58 +383,15 @@ Paginated list endpoints return:
 
 ## Example Workflow
 
-1. Upload a PDF through `POST /upload/pdf`.
-2. Inspect stored chunks through `GET /documents/{document_id}/chunks/`.
-3. Create a claim through `POST /claims/`.
-4. Inspect ranked evidence through `GET /claims/{claim_id}/evidence`.
-5. Verify the claim through `POST /claims/{claim_id}/verify`.
-6. Query saved results through `GET /verification-results/claim/{claim_id}`.
-7. Retrieve display-ready detail through `GET /verification-results/{verification_id}/detail`.
-
-## Project Structure
-
-```text
-backend/
-  app/
-    api/
-      health.py
-      documents.py
-      chunks.py
-      upload.py
-      claims.py
-      verification.py
-    db/
-      database.py
-      models.py
-    schemas/
-      document.py
-      claim.py
-      verification.py
-      llm_verification.py
-      pagination.py
-      error.py
-    services/
-      retrieval.py
-      verification.py
-      llm_verification.py
-      verification_detail.py
-      pagination.py
-    main.py
-  tests/
-    conftest.py
-    test_health.py
-    test_documents.py
-    test_upload.py
-    test_claims.py
-    test_evidence.py
-    test_verification.py
-    test_llm_verification.py
-  requirements.txt
-  .env.example
-
-docker-compose.yml
-README.md
-```
+1. Start PostgreSQL and the FastAPI backend.
+2. Start the Next.js frontend.
+3. Upload a PDF from the browser.
+4. Confirm that the document appears in the uploaded documents list.
+5. Create a claim.
+6. Click `Verify` on the claim.
+7. Review the verification result.
+8. Review the evidence chunks used for verification.
+9. Expand the evidence list when more than three chunks are returned.
 
 ## Local Development
 
@@ -381,16 +413,51 @@ pip install -r requirements.txt
 ### 3. Start the backend
 
 ```bash
+cd backend
 uvicorn app.main:app --reload
 ```
 
-### 4. Open API documentation
+Backend runs at:
+
+```text
+http://127.0.0.1:8000
+```
+
+API docs are available at:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-### 5. Run tests
+### 4. Install frontend dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+### 5. Configure frontend environment
+
+Create `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+### 6. Start the frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs at:
+
+```text
+http://localhost:3000
+```
+
+### 7. Run backend tests
 
 Run tests from the backend directory so pytest does not collect unrelated projects from the home directory:
 
@@ -399,7 +466,16 @@ cd ~/Desktop/claim_ai/backend
 python -m pytest
 ```
 
+### 8. Build the frontend
+
+```bash
+cd ~/Desktop/claim_ai/frontend
+npm run build
+```
+
 ## Environment Variables
+
+### Backend
 
 `.env.example` documents the expected OpenAI variable:
 
@@ -410,6 +486,14 @@ OPENAI_API_KEY=your_openai_api_key_here
 Do not commit a real API key. Store it in a local `.env` file excluded by `.gitignore`, or export the variable in your shell before starting the backend.
 
 The default `rule_based` mode does not require an OpenAI API key. `openai` mode requires a valid key and provider access. If the provider fails, the endpoint falls back to rule-based verification.
+
+### Frontend
+
+`frontend/.env.local` should contain:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
 
 ## Development Status
 
@@ -434,29 +518,39 @@ The default `rule_based` mode does not require an OpenAI API key. `openai` mode 
 - OpenAI provider mock tests and evidence chunk validation
 - Verification mode selection: `rule_based` or `openai`
 - Automatic rule-based fallback when OpenAI verification fails
+- Next.js frontend setup
+- Frontend API client and shared TypeScript response types
+- PDF upload UI
+- Uploaded documents list
+- Claim creation UI
+- Claims list UI
+- Verification result display
+- Evidence chunk display with expand/collapse behavior
+- Reusable frontend component split
 
 ### Next Steps
 
-1. Environment and startup-flow cleanup
-2. Final backend test pass and release commit
-3. Frontend project setup and API client
-4. PDF upload workflow in the frontend
-5. Claims list with search and pagination
-6. Verification detail page
-7. Loading, error, and empty states
+1. Add frontend verification mode selection: `rule_based` or `openai`
+2. Add claim and document search controls in the frontend
+3. Add pagination controls in the frontend
+4. Add a verification detail page
+5. Improve PDF upload UX and file selection reset behavior
+6. Add screenshots or a short demo GIF to the README
+7. Add database migrations for production-style schema management
 
 ### V2 Backlog
 
 The following are intentionally out of scope for the current MVP:
 
-- Status filters and more advanced document filters
-- More complex search behavior
 - Authentication and user-specific documents
-- Database migrations
 - pgvector and semantic retrieval
 - Embedding-based evidence ranking
-- Additional API optimization and abstraction
+- More advanced document filters
+- Full verification history page
+- Deployment to a cloud provider
+- Role-based access control
+- Multi-file batch upload
 
 ## Status
 
-This project is under active development. The current version is a backend MVP with PDF ingestion, ranked evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, pagination, search, standardized errors, and test coverage for core API behavior.
+This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a functional Next.js frontend.
