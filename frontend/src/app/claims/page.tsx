@@ -9,6 +9,8 @@ import {VerificationModeSelector} from "@/components/VerificationModeSelector";
 import {VerificationResultCard} from "@/components/VerificationResultCard";
 import {EvidenceCard} from "@/components/EvidenceCard";
 import {ClaimsCard} from "@/components/ClaimsCard";
+import {PaginationControls} from "@/components/PaginationControls";
+import {SearchCard} from "@/components/SearchCard";
 import {
   getClaims,
   createClaim,
@@ -250,40 +252,15 @@ export default function ClaimsPage() {
           onToggleShowAllEvidence={() => setShowAllEvidence((current) => !current)}
         />
 
-        <section className="mb-6 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-            Search claims
-          </p>
-
-          <form onSubmit={handleSearchClaims} className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <input
-              type="text"
-              value={claimSearch}
-              onChange={(event) => setClaimSearch(event.target.value)}
-              placeholder="Search claim text"
-              className="min-h-11 flex-1 rounded-full border border-neutral-200 bg-neutral-50 px-4 text-sm outline-none transition focus:border-neutral-400 focus:bg-white"
-            />
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={searchingClaims}
-                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {searchingClaims ? "Searching..." : "Search"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleClearClaimSearch}
-                disabled={searchingClaims}
-                className="rounded-full border border-neutral-300 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Clear
-              </button>
-            </div>
-          </form>
-        </section>
+        <SearchCard
+          title="Search claims"
+          value={claimSearch}
+          placeholder="Search claim text"
+          searching={searchingClaims}
+          onValueChange={setClaimSearch}
+          onSearch={handleSearchClaims}
+          onClear={handleClearClaimSearch}
+        />
 
         <ClaimsCard
           claims={claims}
@@ -291,32 +268,16 @@ export default function ClaimsPage() {
           onVerifyClaim={handleVerifyClaim}
         />
 
-        <section className="mt-6 flex flex-col gap-3 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-neutral-500">
-            {claimTotal === 0
-              ? "No claims found"
-              : `Showing ${claimOffset + 1}-${Math.min(claimOffset + claims.length, claimTotal)} of ${claimTotal} claims`}
-          </p>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleChangeClaimPage(Math.max(claimOffset - claimLimit, 0))}
-              disabled={searchingClaims || claimOffset === 0}
-              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => handleChangeClaimPage(claimOffset + claimLimit)}
-              disabled={searchingClaims || !claimHasMore}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </section>
+        <PaginationControls
+          total={claimTotal}
+          offset={claimOffset}
+          itemCount={claims.length}
+          hasMore={claimHasMore}
+          loading={searchingClaims}
+          itemLabel="claims"
+          onPrevious={() => handleChangeClaimPage(Math.max(claimOffset - claimLimit, 0))}
+          onNext={() => handleChangeClaimPage(claimOffset + claimLimit)}
+        />
       </div>
       <style jsx global>{`
         @keyframes fadeIn {
