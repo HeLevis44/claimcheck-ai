@@ -9,6 +9,7 @@ import {ClaimsCard} from "@/components/ClaimsCard";
 import {CreateClaimCard} from "@/components/CreateClaimCard";
 import {VerificationResultCard} from "@/components/VerificationResultCard";
 import {EvidenceCard} from "@/components/EvidenceCard";
+import {VerificationModeSelector} from "@/components/VerificationModeSelector";
 import {
   getClaims,
   createClaim,
@@ -34,6 +35,7 @@ export default function Home() {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [verificationMode, setVerificationMode] = useState<"rule_based" | "openai">("rule_based");
 
   useEffect(() => {
     async function loadInitialData() {
@@ -94,7 +96,7 @@ export default function Home() {
       setShowAllEvidence(false);
       setVerifyingClaimId(claim_id);
 
-      const result = await verifyClaim(claim_id, "rule_based");
+      const result = await verifyClaim(claim_id, verificationMode);
       setVerificationResult(result);
 
       const evidenceData = await getClaimEvidence(claim_id);
@@ -177,6 +179,10 @@ export default function Home() {
 
         <DocumentsCard documents={documents} />
 
+        <VerificationModeSelector
+          verificationMode={verificationMode}
+          onVerificationModeChange={setVerificationMode}
+        />
         <VerificationResultCard
           verifyingClaimId={verifyingClaimId}
           verificationResult={verificationResult}
