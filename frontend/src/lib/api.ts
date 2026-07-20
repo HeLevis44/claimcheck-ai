@@ -38,17 +38,21 @@ export async function getClaims(
   return apiRequest<PaginatedResponse<Claim>>(`/claims/?${params.toString()}`);
 }
 
-export async function getDocuments(q?: string): Promise<PaginatedResponse<Document>> {
+export async function getDocuments(
+  q?: string,
+  limit: number = 10,
+  offset: number = 0
+): Promise<PaginatedResponse<Document>> {
   const params = new URLSearchParams();
+
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
 
   if (q !== undefined && q.trim() !== "") {
     params.set("q", q.trim());
   }
 
-  const queryString = params.toString();
-  const path = queryString === "" ? "/documents/" : `/documents/?${queryString}`;
-
-  return apiRequest<PaginatedResponse<Document>>(path);
+  return apiRequest<PaginatedResponse<Document>>(`/documents/?${params.toString()}`);
 }
 
 export async function createClaim(
