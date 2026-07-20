@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
+import Link from "next/link";
 import {ErrorBanner} from "@/components/ErrorBanner";
 import {UploadPdfCard} from "@/components/UploadPdfCard";
 import {DocumentsCard} from "@/components/DocumentsCard";
@@ -152,6 +153,12 @@ export default function DocumentsPage() {
   return (
     <main className="min-h-screen bg-[#f5f5f7] px-6 py-12 text-[#1d1d1f]">
       <div className="mx-auto max-w-4xl">
+        <Link
+          href="/"
+          className="mb-4 inline-flex rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-100"
+        >
+          ← Back to dashboard
+        </Link>
         <section className="mb-8 rounded-3xl bg-white/90 p-8 shadow-sm ring-1 ring-black/5">
           <p className="text-sm font-medium uppercase tracking-wide text-neutral-500">
             Documents
