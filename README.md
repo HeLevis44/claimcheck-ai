@@ -14,16 +14,20 @@ ClaimCheck AI addresses this by grounding verification in uploaded source docume
 
 ### Frontend
 
+- Dashboard landing page with navigation to the main workflows
 - Upload PDF files from the browser
 - Display uploaded documents
+- Search and paginate uploaded documents
 - Create claims from the UI
 - Display claim list
-- Verify claims with a rule-based verification flow
-- Display latest verification status, confidence, and reasoning
+- Search and paginate claims
+- Select verification mode: `rule_based` or `openai`
+- Verify claims and display status, confidence, and reasoning
 - Display evidence chunks used for verification
 - Show the top 3 evidence chunks by default with expand/collapse support
-- Reusable React component structure for homepage cards
+- Shared React components for cards, search controls, pagination controls, and verification display
 - Loading, empty, disabled, and error states for the main workflow
+- Back-to-dashboard navigation from workflow pages
 
 ### Backend
 
@@ -103,15 +107,22 @@ frontend/
       globals.css
       layout.tsx
       page.tsx
+      documents/
+        page.tsx
+      claims/
+        page.tsx
     components/
       HeaderCard.tsx
       ErrorBanner.tsx
       CreateClaimCard.tsx
       UploadPdfCard.tsx
       DocumentsCard.tsx
+      ClaimsCard.tsx
+      VerificationModeSelector.tsx
       VerificationResultCard.tsx
       EvidenceCard.tsx
-      ClaimsCard.tsx
+      SearchCard.tsx
+      PaginationControls.tsx
     lib/
       api.ts
     types/
@@ -121,21 +132,16 @@ frontend/
 ### Frontend Component Roles
 
 ```text
-page.tsx
-  Owns page state and business flow.
-  Loads claims and documents.
-  Handles claim creation, PDF upload, verification, and evidence retrieval.
+app/page.tsx
+  Provides the dashboard landing page and navigation to the main workflows.
 
-components/
-  Own reusable UI cards.
-  Receive data and event handlers through props.
-  Do not directly call backend APIs.
+app/documents/page.tsx
+  Owns document workflow state.
+  Handles PDF upload, document search, and document pagination.
 
-lib/api.ts
-  Centralizes frontend API requests to the FastAPI backend.
-
-types/api.ts
-  Defines shared TypeScript response types used by the frontend.
+app/claims/page.tsx
+  Owns claim workflow state.
+  Handles claim creation, claim search, pagination, verification mode selection, verification, and evidence retrieval.
 ```
 
 ## Backend Architecture
@@ -385,13 +391,19 @@ Paginated list endpoints return:
 
 1. Start PostgreSQL and the FastAPI backend.
 2. Start the Next.js frontend.
-3. Upload a PDF from the browser.
-4. Confirm that the document appears in the uploaded documents list.
-5. Create a claim.
-6. Click `Verify` on the claim.
-7. Review the verification result.
-8. Review the evidence chunks used for verification.
-9. Expand the evidence list when more than three chunks are returned.
+3. Open the dashboard at `http://localhost:3000`.
+4. Go to the Documents page.
+5. Upload a PDF from the browser.
+6. Confirm that the document appears in the uploaded documents list.
+7. Search uploaded documents and use pagination controls.
+8. Return to the dashboard.
+9. Go to the Claims page.
+10. Create a claim.
+11. Search claims and use pagination controls.
+12. Select a verification mode.
+13. Click `Verify` on the claim.
+14. Review the verification status, confidence, reasoning, and evidence chunks.
+15. Expand the evidence list when more than three chunks are returned.
 
 ## Local Development
 
@@ -510,6 +522,8 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 - Verification detail endpoint
 - Shared pagination helper and paginated list responses
 - Search for claims and documents
+- Frontend search controls for claims and documents
+- Frontend pagination controls for claims and documents
 - Unified HTTP and validation error responses
 - Verification status enum
 - LLM verification input and output schemas
@@ -526,31 +540,41 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 - Claims list UI
 - Verification result display
 - Evidence chunk display with expand/collapse behavior
-- Reusable frontend component split
+- Reusable frontend component split, including shared search and pagination components
+- Dashboard route and separate documents and claims routes
+- Back-to-dashboard navigation on workflow pages
 
 ### Next Steps
 
-1. Add frontend verification mode selection: `rule_based` or `openai`
-2. Add claim and document search controls in the frontend
-3. Add pagination controls in the frontend
-4. Add a verification detail page
-5. Improve PDF upload UX and file selection reset behavior
-6. Add screenshots or a short demo GIF to the README
-7. Add database migrations for production-style schema management
+1. Add a verification detail page
+2. Improve PDF upload UX and file selection reset behavior
+3. Add screenshots or a short demo GIF to the README
+4. Add database migrations for production-style schema management
+5. Prepare deployment configuration for a production demo
 
-### V2 Backlog
+## Demo Checklist
 
-The following are intentionally out of scope for the current MVP:
+Use this checklist when recording or presenting the project demo.
 
-- Authentication and user-specific documents
-- pgvector and semantic retrieval
-- Embedding-based evidence ranking
-- More advanced document filters
-- Full verification history page
-- Deployment to a cloud provider
-- Role-based access control
-- Multi-file batch upload
+1. Start PostgreSQL, the backend, and the frontend.
+2. Open the dashboard at `http://localhost:3000`.
+3. Go to the Documents page.
+   - Upload a PDF.
+   - Search uploaded documents.
+   - Use Previous and Next pagination controls.
+   - Return to the dashboard.
+4. Go to the Claims page.
+   - Create a new claim.
+   - Search claims.
+   - Use Previous and Next pagination controls.
+   - Select rule-based verification.
+   - Verify a claim and review the status, confidence, reasoning, and evidence chunks.
+   - Return to the dashboard.
+5. Optional OpenAI demo.
+   - Set `OPENAI_API_KEY` in the backend environment.
+   - Select OpenAI verification mode.
+   - Verify a claim and compare the result with rule-based mode.
 
 ## Status
 
-This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a functional Next.js frontend.
+This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a polished Next.js frontend with dashboard navigation, document upload, search, pagination, claim creation, verification, and evidence review.
