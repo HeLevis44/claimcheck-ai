@@ -20,6 +20,10 @@ type VerificationMode = "rule_based" | "openai";
 
 export default function ClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [claimTotal, setClaimTotal] = useState<number>(0);
+  const [claimLimit] = useState<number>(10);
+  const [claimOffset, setClaimOffset] = useState<number>(0);
+  const [claimHasMore, setClaimHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [claimText, setClaimText] = useState<string>("");
@@ -36,8 +40,11 @@ export default function ClaimsPage() {
   useEffect(() => {
     async function loadClaims() {
       try {
-        const claimData = await getClaims();
+        const claimData = await getClaims(undefined, claimLimit, 0);
         setClaims(claimData.items);
+        setClaimTotal(claimData.total);
+        setClaimOffset(claimData.offset);
+        setClaimHasMore(claimData.has_more);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -69,6 +76,7 @@ export default function ClaimsPage() {
       );
 
       setClaims([new_claim, ...claims]);
+      setClaimTotal((currentTotal) => currentTotal + 1);
       setClaimText("");
       setSourceText("");
     } catch (err) {
@@ -83,24 +91,27 @@ export default function ClaimsPage() {
   }
 
   async function handleSearchClaims(event: React.FormEvent<HTMLFormElement>) {
-  event.preventDefault();
+    event.preventDefault();
 
-  try {
-    setSearchingClaims(true);
-    setError(null);
+    try {
+      setSearchingClaims(true);
+      setError(null);
 
-    const claimData = await getClaims(claimSearch);
-    setClaims(claimData.items);
-  } catch (err) {
-    if (err instanceof Error) {
-      setError(err.message);
-    } else {
-      setError("Failed to search claims");
+      const claimData = await getClaims(claimSearch, claimLimit, 0);
+      setClaims(claimData.items);
+      setClaimTotal(claimData.total);
+      setClaimOffset(claimData.offset);
+      setClaimHasMore(claimData.has_more);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to search claims");
+      }
+    } finally {
+      setSearchingClaims(false);
     }
-  } finally {
-    setSearchingClaims(false);
   }
-}
 
   async function handleClearClaimSearch() {
     try {
@@ -108,8 +119,32 @@ export default function ClaimsPage() {
       setError(null);
       setClaimSearch("");
 
-      const claimData = await getClaims();
+      const claimData = await getClaims(undefined, claimLimit, 0);
       setClaims(claimData.items);
+      setClaimTotal(claimData.total);
+      setClaimOffset(claimData.offset);
+      setClaimHasMore(claimData.has_more);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load claims");
+      }
+    } finally {
+      setSearchingClaims(false);
+    }
+  }
+
+  async function handleChangeClaimPage(nextOffset: number) {
+    try {
+      setSearchingClaims(true);
+      setError(null);
+
+      const claimData = await getClaims(claimSearch, claimLimit, nextOffset);
+      setClaims(claimData.items);
+      setClaimTotal(claimData.total);
+      setClaimOffset(claimData.offset);
+      setClaimHasMore(claimData.has_more);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -247,6 +282,33 @@ export default function ClaimsPage() {
           verifyingClaimId={verifyingClaimId}
           onVerifyClaim={handleVerifyClaim}
         />
+
+        <section className="mt-6 flex flex-col gap-3 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-neutral-500">
+            {claimTotal === 0
+              ? "No claims found"
+              : `Showing ${claimOffset + 1}-${Math.min(claimOffset + claims.length, claimTotal)} of ${claimTotal} claims`}
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleChangeClaimPage(Math.max(claimOffset - claimLimit, 0))}
+              disabled={searchingClaims || claimOffset === 0}
+              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChangeClaimPage(claimOffset + claimLimit)}
+              disabled={searchingClaims || !claimHasMore}
+              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </section>
       </div>
       <style jsx global>{`
         @keyframes fadeIn {
