@@ -24,6 +24,8 @@ export default function ClaimsPage() {
   const [error, setError] = useState<string | null>(null);
   const [claimText, setClaimText] = useState<string>("");
   const [sourceText, setSourceText] = useState<string>("");
+  const [claimSearch, setClaimSearch] = useState<string>("");
+  const [searchingClaims, setSearchingClaims] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [verificationMode, setVerificationMode] = useState<VerificationMode>("rule_based");
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
@@ -77,6 +79,45 @@ export default function ClaimsPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSearchClaims(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  try {
+    setSearchingClaims(true);
+    setError(null);
+
+    const claimData = await getClaims(claimSearch);
+    setClaims(claimData.items);
+  } catch (err) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError("Failed to search claims");
+    }
+  } finally {
+    setSearchingClaims(false);
+  }
+}
+
+  async function handleClearClaimSearch() {
+    try {
+      setSearchingClaims(true);
+      setError(null);
+      setClaimSearch("");
+
+      const claimData = await getClaims();
+      setClaims(claimData.items);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load claims");
+      }
+    } finally {
+      setSearchingClaims(false);
     }
   }
 
@@ -165,6 +206,41 @@ export default function ClaimsPage() {
           showAllEvidence={showAllEvidence}
           onToggleShowAllEvidence={() => setShowAllEvidence((current) => !current)}
         />
+
+        <section className="mb-6 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Search claims
+          </p>
+
+          <form onSubmit={handleSearchClaims} className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={claimSearch}
+              onChange={(event) => setClaimSearch(event.target.value)}
+              placeholder="Search claim text"
+              className="min-h-11 flex-1 rounded-full border border-neutral-200 bg-neutral-50 px-4 text-sm outline-none transition focus:border-neutral-400 focus:bg-white"
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={searchingClaims}
+                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {searchingClaims ? "Searching..." : "Search"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClearClaimSearch}
+                disabled={searchingClaims}
+                className="rounded-full border border-neutral-300 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear
+              </button>
+            </div>
+          </form>
+        </section>
 
         <ClaimsCard
           claims={claims}

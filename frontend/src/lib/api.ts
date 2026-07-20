@@ -21,8 +21,14 @@ async function apiRequest<T>(
     return response.json();
 }
 
-export async function getClaims(): Promise<PaginatedResponse<Claim>> {
-    return apiRequest<PaginatedResponse<Claim>>("/claims/");
+export async function getClaims(q?: string): Promise<PaginatedResponse<Claim>> {
+  const params = new URLSearchParams();
+  if (q !== undefined && q.trim() !== "") {
+    params.set("q", q.trim());
+  }
+  const queryString = params.toString();
+  const path = queryString === "" ? "/claims/" : `/claims/?${queryString}`;
+  return apiRequest<PaginatedResponse<Claim>>(path);
 }
 
 export async function getDocuments(): Promise<PaginatedResponse<Document>>{
