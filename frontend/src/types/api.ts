@@ -44,3 +44,26 @@ export type PaginatedResponse<T> = {
   has_more: boolean;
 };
 
+export type VerificationDetail = {
+  verification: {
+    id: number;
+    status: VerificationStatus;
+    confidence: number;
+    reasoning: string | null;
+    created_at?: string;
+  };
+  claim: {
+    id: number;
+    claim_text: string;
+    source_text: string | null;
+    created_at?: string;
+  };
+  evidence: {
+    id: number;
+    document_id: number;
+    filename: string;
+    page_number: number | null;
+    chunk_index: number;
+    content: string;
+  } | null;
+};

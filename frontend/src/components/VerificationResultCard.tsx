@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type {VerificationResult} from "@/types/api";
 
 type VerificationResultCardProps = {
@@ -38,6 +39,14 @@ export function VerificationResultCard({
           <p className="text-sm leading-6 text-neutral-700">
             {verificationResult.reasoning || "No reasoning returned."}
           </p>
+
+          <Link
+            href={`/verification-results/${verificationResult.id}`}
+            className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          >
+            View detail
+          </Link>
+          
         </div>
       ) : (
         <p className="mt-3 text-sm text-neutral-400">

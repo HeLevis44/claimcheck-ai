@@ -1,4 +1,12 @@
-import type {Claim, Document, VerificationResult, Evidence, PaginatedResponse} from "@/types/api";
+import type {
+    Claim, 
+    Document, 
+    VerificationResult, 
+    Evidence, 
+    PaginatedResponse, 
+    VerificationDetail
+} from "@/types/api";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 async function apiRequest<T>(
@@ -109,4 +117,12 @@ export async function uploadPdf(
 
 export async function getClaimEvidence(claim_id: number): Promise<Evidence[]>{
     return apiRequest<Evidence[]>(`/claims/${claim_id}/evidence`)
+}
+
+export async function getVerificationDetail(
+  verificationId: number
+): Promise<VerificationDetail> {
+  return apiRequest<VerificationDetail>(
+    `/verification-results/${verificationId}/detail`
+  );
 }
