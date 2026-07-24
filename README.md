@@ -646,4 +646,4 @@ This future phase may include:
 
 ## Status
 
-This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a polished Next.js frontend with dashboard navigation, document upload, search, pagination, claim creation, verification, evidence review, and detailed verification reports. The next major learning phase will focus on distributed-system patterns such as asynchronous verification jobs, background workers, retries, and queue-based processing.
+This repository represents the completed v1.0 MVP of ClaimCheck AI. The project demonstrates a full-stack verification workflow from source document ingestion to evidence-grounded claim review, with a FastAPI/PostgreSQL backend and a polished Next.js frontend.
