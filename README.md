@@ -105,6 +105,24 @@ Open verification detail report
 Review confidence, reasoning, evidence coverage, selected source chunk, and metadata
 ```
 
+## Screenshots
+
+### Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Documents Workflow
+
+![Documents workflow](docs/screenshots/documents.png)
+
+### Claims Workflow
+
+![Claims workflow](docs/screenshots/claims.png)
+
+### Verification Detail Report
+
+![Verification detail report](docs/screenshots/verification-detail.png)
+
 ## Frontend Structure
 
 ```text
