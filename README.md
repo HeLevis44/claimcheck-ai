@@ -23,6 +23,9 @@ ClaimCheck AI addresses this by grounding verification in uploaded source docume
 - Search and paginate claims
 - Select verification mode: `rule_based` or `openai`
 - Verify claims and display status, confidence, and reasoning
+- Open a detailed verification report for each verification result
+- Review confidence score, confidence interpretation, reasoning, evidence coverage, selected source chunk, and technical metadata
+- Use interactive detail-page actions such as copy summary, show/hide evidence text, and copy evidence
 - Display evidence chunks used for verification
 - Show the top 3 evidence chunks by default with expand/collapse support
 - Shared React components for cards, search controls, pagination controls, and verification display
@@ -96,6 +99,10 @@ Verify claim
       rule-based fallback
   ↓
 Display verification result and evidence chunks in the frontend
+  ↓
+Open verification detail report
+  ↓
+Review confidence, reasoning, evidence coverage, selected source chunk, and metadata
 ```
 
 ## Frontend Structure
@@ -111,6 +118,9 @@ frontend/
         page.tsx
       claims/
         page.tsx
+      verification-results/
+        [verificationId]/
+          page.tsx
     components/
       HeaderCard.tsx
       ErrorBanner.tsx
@@ -142,6 +152,10 @@ app/documents/page.tsx
 app/claims/page.tsx
   Owns claim workflow state.
   Handles claim creation, claim search, pagination, verification mode selection, verification, and evidence retrieval.
+
+app/verification-results/[verificationId]/page.tsx
+  Owns verification detail state.
+  Renders a review-style verification report with confidence summary, reasoning, evidence review, lightweight statistics, copy actions, and metadata.
 ```
 
 ## Backend Architecture
@@ -404,6 +418,8 @@ Paginated list endpoints return:
 13. Click `Verify` on the claim.
 14. Review the verification status, confidence, reasoning, and evidence chunks.
 15. Expand the evidence list when more than three chunks are returned.
+16. Click `View detail` on a verification result.
+17. Review the detailed verification report, including confidence score, status interpretation, reasoning, evidence review, lightweight statistics, and metadata.
 
 ## Local Development
 
@@ -520,6 +536,7 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 - Rule-based verification
 - Manual verification-result APIs
 - Verification detail endpoint
+- Verification detail page with confidence summary, evidence review, statistics, copy actions, and metadata
 - Shared pagination helper and paginated list responses
 - Search for claims and documents
 - Frontend search controls for claims and documents
@@ -543,14 +560,15 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 - Reusable frontend component split, including shared search and pagination components
 - Dashboard route and separate documents and claims routes
 - Back-to-dashboard navigation on workflow pages
+- View-detail navigation from verification result cards
 
 ### Next Steps
 
-1. Add a verification detail page
-2. Improve PDF upload UX and file selection reset behavior
-3. Add screenshots or a short demo GIF to the README
-4. Add database migrations for production-style schema management
-5. Prepare deployment configuration for a production demo
+1. Improve PDF upload UX and file selection reset behavior
+2. Add screenshots or a short demo GIF to the README
+3. Add database migrations for production-style schema management
+4. Prepare deployment configuration for a production demo
+5. Plan a future distributed verification pipeline with asynchronous jobs and background workers
 
 ## Demo Checklist
 
@@ -569,12 +587,45 @@ Use this checklist when recording or presenting the project demo.
    - Use Previous and Next pagination controls.
    - Select rule-based verification.
    - Verify a claim and review the status, confidence, reasoning, and evidence chunks.
-   - Return to the dashboard.
+   - Click `View detail` to open the verification detail report.
+   - Review the confidence score, status interpretation, reasoning, evidence review, statistics, and metadata.
+   - Use the copy summary, show/hide evidence text, and copy evidence interactions.
+   - Return to the Claims page and then return to the dashboard.
 5. Optional OpenAI demo.
    - Set `OPENAI_API_KEY` in the backend environment.
    - Select OpenAI verification mode.
    - Verify a claim and compare the result with rule-based mode.
 
+## Future Work: Distributed Verification Pipeline
+
+The current MVP runs claim verification synchronously through the FastAPI backend. A future distributed-systems phase will refactor verification into an asynchronous job pipeline.
+
+Planned direction:
+
+```text
+Frontend
+  ↓ create verification job
+FastAPI API server
+  ↓ enqueue job
+Job state store / queue
+  ↓ consume job
+Background worker
+  ↓ write result
+PostgreSQL
+  ↓ poll status / open report
+Frontend verification detail page
+```
+
+This future phase may include:
+
+- `VerificationJob` model with `pending`, `running`, `completed`, and `failed` states
+- Job status API endpoints
+- Background worker for verification processing
+- Retry and failure handling
+- Idempotency protection for repeated verification requests
+- Redis and Celery as a later queue/broker upgrade
+- Docker Compose setup for API, worker, Redis, and PostgreSQL
+
 ## Status
 
-This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a polished Next.js frontend with dashboard navigation, document upload, search, pagination, claim creation, verification, and evidence review.
+This project is under active development. The current version is a full-stack MVP with PDF ingestion, document chunking, claim creation, evidence retrieval, rule-based verification, optional OpenAI verification mode, provider fallback, standardized errors, backend tests, and a polished Next.js frontend with dashboard navigation, document upload, search, pagination, claim creation, verification, evidence review, and detailed verification reports. The next major learning phase will focus on distributed-system patterns such as asynchronous verification jobs, background workers, retries, and queue-based processing.
